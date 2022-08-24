@@ -1,6 +1,6 @@
 pragma solidity ^0.8.4;
 
-interface ISocketRegistry {
+abstract contract ISocketRegistry {
     struct BridgeRequest {
         uint256 id;
         uint256 optionalNativeAmount;
@@ -21,7 +21,15 @@ interface ISocketRegistry {
         BridgeRequest bridgeRequest;
     }
 
+    struct RouteData {
+        address route;
+        bool isEnabled;
+        bool isMiddleware;
+    }
+    RouteData[] public routes;
+
     function outboundTransferTo(UserRequest calldata _userRequest)
+        virtual
         external
         payable;
 }
