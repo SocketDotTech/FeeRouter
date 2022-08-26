@@ -55,6 +55,7 @@ contract FeeRouter is Ownable {
         FeeSplits[] feeSplits;
     }
 
+    mapping(uint256 => uint256) validIntegrators;
     mapping(uint256 => FeeConfig) public feeConfigMapping;
     mapping(uint256 => mapping(address => uint256)) earnedTokenFeeMap;
 
@@ -82,6 +83,7 @@ contract FeeRouter is Ownable {
         );
 
         feeConfigMapping[integratorId] = feeConfig;
+        validIntegrators[integratorId] = 1;
         emit RegisterFee(integratorId, feeConfig);
     }
 
@@ -143,11 +145,16 @@ contract FeeRouter is Ownable {
                 );
             }
         }
+        earnedTokenFeeMap[integratorId][tokenAddress] = 0;
     }
 
     function deductFeeAndCallRegistry(FeeRequest memory _feeRequest) public {
         address inputTokenAddress;
         address approvalAddress;
+        require(
+            validIntegrators[_feeRequest.integratorId] == 1,
+            "FeeConfig is not registered."
+        );
         if (_feeRequest.userRequest.middlewareRequest.id == 0) {
             inputTokenAddress = _feeRequest
                 .userRequest
@@ -204,7 +211,11 @@ contract FeeRouter is Ownable {
         return earnedTokenFeeMap[integratorId][tokenAddress];
     }
 
-    function getFeeConfig(uint256 integratorId) public view returns (FeeConfig memory feeConfig) {
+    function getFeeConfig(uint256 integratorId)
+        public
+        view
+        returns (FeeConfig memory feeConfig)
+    {
         return feeConfigMapping[integratorId];
     }
 }
