@@ -25,7 +25,12 @@ contract FeeRouter is Ownable {
     // Events
     event RegisterFee(uint256 integratorId, FeeConfig feeConfig);
     event UpdateFee(uint256 integratorId, FeeConfig feeConfig);
-    event ClaimFee(uint256 integratorId, address tokenAddress, uint256 amount, address owner);
+    event ClaimFee(
+        uint256 integratorId,
+        address tokenAddress,
+        uint256 amount,
+        address owner
+    );
     event BridgeSocket(
         uint256 amount,
         address inputTokenAddress,
@@ -115,7 +120,12 @@ contract FeeRouter is Ownable {
                 uint256 amountToBeSent = (earnedFee *
                     feeSplits[i].partOfTotalFeesInBps) / PRECISION;
                 payable(feeSplits[i].owner).transfer(amountToBeSent);
-                emit ClaimFee(integratorId, tokenAddress, amountToBeSent, feeSplits[i].owner);
+                emit ClaimFee(
+                    integratorId,
+                    tokenAddress,
+                    amountToBeSent,
+                    feeSplits[i].owner
+                );
             }
         } else {
             for (uint256 i = 0; i < feeSplits.length; i++) {
@@ -125,7 +135,12 @@ contract FeeRouter is Ownable {
                     feeSplits[i].owner,
                     amountToBeSent
                 );
-                emit ClaimFee(integratorId, tokenAddress, amountToBeSent, feeSplits[i].owner);
+                emit ClaimFee(
+                    integratorId,
+                    tokenAddress,
+                    amountToBeSent,
+                    feeSplits[i].owner
+                );
             }
         }
     }
@@ -170,7 +185,26 @@ contract FeeRouter is Ownable {
             );
             socket.outboundTransferTo(_feeRequest.userRequest);
         }
+        emit BridgeSocket(
+            _feeRequest.userRequest.amount,
+            inputTokenAddress,
+            _feeRequest.integratorId,
+            _feeRequest.userRequest.toChainId,
+            _feeRequest.userRequest.middlewareRequest.id,
+            _feeRequest.userRequest.bridgeRequest.id,
+            amountToBeSent
+        );
+    }
 
-        emit BridgeSocket(_feeRequest.userRequest.amount, inputTokenAddress, _feeRequest.integratorId, _feeRequest.userRequest.toChainId, _feeRequest.userRequest.middlewareRequest.id, _feeRequest.userRequest.bridgeRequest.id, amountToBeSent);
+    function getEarnedFee(address tokenAddress, uint256 integratorId)
+        public
+        view
+        returns (uint256)
+    {
+        return earnedTokenFeeMap[integratorId][tokenAddress];
+    }
+
+    function getFeeConfig(uint256 integratorId) public view returns (FeeConfig memory feeConfig) {
+        return feeConfigMapping[integratorId];
     }
 }
