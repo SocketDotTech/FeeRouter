@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 // Tests
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 import "forge-std/Script.sol";
 
 // Contracts
@@ -12,48 +12,319 @@ import "../src/utils/Ownable.sol";
 import "../src/FeeRouter.sol";
 
 contract FeeRouterTest is Test {
+    event RegisterFee(uint256 integratorId, FeeRouter.FeeConfig feeConfig);
+    event UpdateFee(uint256 integratorId, FeeRouter.FeeConfig feeConfig);
+    event ClaimFee(
+        uint256 integratorId,
+        address tokenAddress,
+        uint256 amount,
+        address owner
+    );
+    event BridgeSocket(
+        uint256 amount,
+        address inputTokenAddress,
+        uint256 integratorId,
+        uint256 toChainId,
+        uint256 middlewareId,
+        uint256 bridgeId,
+        uint256 totalFee
+    );
     FeeRouter public feeRouter;
     ISocketRegistry public socketRegistry;
-
-    struct FeeSplits {
-        address owner;
-        uint256 partOfTotalFeesInBps;
-    }
-
-    struct FeeConfig {
-        uint256 totalFeeInBps;
-        FeeSplits[] feeSplits;
-    }
 
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant owner = 0x0E1B5AB67aF1c99F8c7Ebc71f41f75D4D6211e53;
+    address constant feeTaker1 = 0x3db45921CCb05A28270E2F99B49A33E65C065983;
+    address constant feeTaker2 = 0x0e038Ad2838aa71eC990E61688C08F395E92b9d9;
     uint256 integratorId = 3;
+    uint256 totalFees10 = stdMath.abs(10);
+    uint256 totalFees100 = stdMath.abs(100);
+    uint256 part3 = stdMath.abs(3);
+    uint256 part7 = stdMath.abs(7);
+    uint256 part4 = stdMath.abs(4);
+
+    uint256 part30 = stdMath.abs(30);
+    uint256 part70 = stdMath.abs(70);
+    uint256 part40 = stdMath.abs(40);
 
     function setUp() public {
-        feeRouter = new FeeRouter(0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0, owner);
-        socketRegistry = ISocketRegistry(0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0);
+        feeRouter = new FeeRouter(
+            0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0,
+            owner
+        );
+        socketRegistry = ISocketRegistry(
+            0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0
+        );
     }
 
-    function testOwnerIsSetCorrectly() public {
-        console.logAddress(feeRouter.owner());
+    // REGISTER  FEE TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+    // Should Successfully pass with correct owner calling register.
+    function testOwnerRegisterSuccess() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+        vm.stopPrank();
     }
 
-    function testRegisterFee() public {
-        vm.prank(owner);
+    // Should revert if register is not called by the owner
+    function testOwnerRegisterRevert() public {
+        vm.startPrank(feeTaker1);
+        FeeRouter.FeeConfig memory feeConfig;
 
+        feeConfig.totalFeeInBps = 10;
+        vm.expectRevert(0x5fc483c5);
+        feeRouter.registerFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Should revert if register is not called by the owner
+    function testOwnerRegisterRevertAddressZero() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 10;
+        vm.expectRevert(abi.encodePacked("ZERO_ADDRESS not owner"));
+        feeRouter.registerFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Should fail since total fees should be equal to the parts.
+    function testRegisterFeeWithUnequalParts() public {
+        vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeConfig memory feeConfig;
-        FeeRouter.FeeSplits[] memory feeSplits;
-        feeSplits[0].owner = owner;
-        feeSplits[0].partOfTotalFeesInBps = 10;
-        feeConfig.totalFeeInBps = 10;
-        feeConfig.feeSplits = feeSplits;
 
-        // Create FeeConfig
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = owner;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = owner;
+        feeSplit2.partOfTotalFeesInBps = part4;
+
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees10;
+
+        // console.log(feeSplits.length);
+
+        // Create FeeConfig - Should Revert
+        vm.expectRevert(
+            abi.encodePacked(
+                "Total Fee in BPS should be equal to the summation of fees when split."
+            )
+        );
         feeRouter.registerFeeConfig(3, feeConfig);
 
-        FeeRouter.FeeConfig memory registeredFeeConfig = feeRouter.getFeeConfig(integratorId);
-        assertEq(registeredFeeConfig, feeConfig);
+        vm.stopPrank();
     }
+
+    // Should Successfully register
+    function testRegisterFeeSuccess() public {
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeConfig memory feeConfig;
+
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees10;
+
+        // Expect Event Emit
+        vm.expectEmit(false, false, false, true);
+        emit RegisterFee(integratorId, feeConfig);
+        feeRouter.registerFeeConfig(integratorId, feeConfig);
+
+        // Get Fee Config From the router.
+        FeeRouter.FeeConfig memory registeredFeeConfig = feeRouter.getFeeConfig(
+            integratorId
+        );
+
+        // Assertions.
+        assertEq(totalFees10, registeredFeeConfig.totalFeeInBps);
+        assertEq(feeTaker1, registeredFeeConfig.feeSplits[0].owner);
+        assertEq(feeTaker2, registeredFeeConfig.feeSplits[1].owner);
+        assertEq(part3, registeredFeeConfig.feeSplits[0].partOfTotalFeesInBps);
+        assertEq(part7, registeredFeeConfig.feeSplits[1].partOfTotalFeesInBps);
+
+        vm.stopPrank();
+    }
+
+    // Should Revert, since the same integrator Id can only update the fee, cannot register again.
+    function testRegisterFeeRevertForSameIntegrator() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+
+        vm.expectRevert(
+            abi.encodePacked("Integrator Id is already registered")
+        );
+        feeRouter.registerFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // UPDATE FEE TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+    // Only Owner should be able to update the fee config for an integrator Id.
+    function testUpdateFeeSuccessOnlyOwner() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+
+        feeRouter.updateFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Shpuld revert if update is tried from a different address than owner.
+    function testUpdateFeeRevertOnlyOwner() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+        vm.stopPrank();
+
+        vm.startPrank(feeTaker1);
+        vm.expectRevert(0x5fc483c5);
+        feeRouter.updateFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Should not update the fee for an unregistered integrator Id.
+    function testUpdateFeeRevertForUnregisteredIntegrator() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+
+        vm.expectRevert(abi.encodePacked("Integrator Id is not registered"));
+        feeRouter.updateFeeConfig(2, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Should not set the owner fo the first fee split to 0, assumption being that there should be an owner to claim the fee.
+    function testUpdateFeeRevertForZeroOwner() public {
+        vm.startPrank(owner);
+        FeeRouter.FeeConfig memory feeConfig;
+
+        feeConfig.totalFeeInBps = 0;
+        feeConfig.feeSplits[0].owner = feeTaker1;
+        feeRouter.registerFeeConfig(1, feeConfig);
+
+        feeConfig.feeSplits[0].owner = address(0);
+        vm.expectRevert(abi.encodePacked("ZERO_ADDRESS not owner"));
+        feeRouter.updateFeeConfig(1, feeConfig);
+        vm.stopPrank();
+    }
+
+    // Should Successfully Update the fee after registration.
+    function testUpdateFeeSuccessWithAssertions() public {
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeConfig memory feeConfig;
+
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees10;
+
+        feeRouter.registerFeeConfig(integratorId, feeConfig);
+
+        feeSplit1.partOfTotalFeesInBps = part30;
+        feeSplit2.partOfTotalFeesInBps = part70;
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees100;
+
+        // Emits Event
+        vm.expectEmit(false, false, false, true);
+        emit UpdateFee(integratorId, feeConfig);
+        feeRouter.updateFeeConfig(integratorId, feeConfig);
+
+        // Get Fee Config
+        FeeRouter.FeeConfig memory registeredFeeConfig = feeRouter.getFeeConfig(
+            integratorId
+        );
+
+        // Assertions.
+        assertEq(totalFees100, registeredFeeConfig.totalFeeInBps);
+        assertEq(feeTaker1, registeredFeeConfig.feeSplits[0].owner);
+        assertEq(feeTaker2, registeredFeeConfig.feeSplits[1].owner);
+        assertEq(part30, registeredFeeConfig.feeSplits[0].partOfTotalFeesInBps);
+        assertEq(part70, registeredFeeConfig.feeSplits[1].partOfTotalFeesInBps);
+
+        vm.stopPrank();
+    }
+
+    // Should revert if the parts and the total fee do not match.
+    function testUpdateFeeRevertForUnequalParts() public {
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeConfig memory feeConfig;
+
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees10;
+
+        feeRouter.registerFeeConfig(integratorId, feeConfig);
+
+        feeSplit1.partOfTotalFeesInBps = part3;
+        feeSplit2.partOfTotalFeesInBps = part7;
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees100;
+
+        // Emits Event
+        vm.expectRevert(abi.encodePacked("Total Fee in BPS should be equal to the summation of fees when split."));
+        feeRouter.updateFeeConfig(integratorId, feeConfig);
+    }
+
+    // FEE DEDUCTION TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
 }

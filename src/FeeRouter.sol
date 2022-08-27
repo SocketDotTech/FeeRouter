@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 import "./interfaces/ISocketRegistry.sol";
 import "./utils/AccessControl.sol";
 import "./utils/Ownable.sol";
+import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // import "forge-std/console.sol";
@@ -52,7 +53,7 @@ contract FeeRouter is Ownable {
 
     struct FeeConfig {
         uint256 totalFeeInBps;
-        FeeSplits[] feeSplits;
+        FeeSplits[3] feeSplits;
     }
 
     mapping(uint256 => uint256) validIntegrators;
@@ -65,10 +66,12 @@ contract FeeRouter is Ownable {
     ) public onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
         require(
-            feeConfigMapping[integratorId].feeSplits[0].owner != address(0),
+            validIntegrators[integratorId] == 0,
             "Integrator Id is already registered"
         );
-        FeeSplits[] memory feeSplits = feeConfig.feeSplits;
+
+        require(feeConfig.feeSplits[0].owner != address(0), "ZERO_ADDRESS not owner");
+        FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
         uint256 totalFeeInBps = feeConfig.totalFeeInBps;
         uint256 x = 0;
 
@@ -92,10 +95,11 @@ contract FeeRouter is Ownable {
         onlyOwner
     {
         require(
-            feeConfigMapping[integratorId].feeSplits[0].owner != address(0),
+            validIntegrators[integratorId] == 1,
             "Integrator Id is not registered"
         );
-        FeeSplits[] memory feeSplits = feeConfig.feeSplits;
+        require(feeConfig.feeSplits[0].owner != address(0), "ZERO_ADDRESS not owner");
+        FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
         uint256 totalFeeInBps = feeConfig.totalFeeInBps;
         uint256 x = 0;
         for (uint256 i = 0; i < feeSplits.length; i++) {
@@ -115,7 +119,7 @@ contract FeeRouter is Ownable {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
         FeeConfig memory integratorConfig = feeConfigMapping[integratorId];
 
-        FeeSplits[] memory feeSplits = integratorConfig.feeSplits;
+        FeeSplits[3] memory feeSplits = integratorConfig.feeSplits;
 
         if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
             for (uint256 i = 0; i < feeSplits.length; i++) {
@@ -217,5 +221,23 @@ contract FeeRouter is Ownable {
         returns (FeeConfig memory feeConfig)
     {
         return feeConfigMapping[integratorId];
+    }
+
+
+    // Rescue Function For ERC20
+    function rescueFunds(
+        address token,
+        address userAddress,
+        uint256 amount
+    ) external onlyOwner {
+        IERC20(token).safeTransfer(userAddress, amount);
+    }
+
+    // Rescue Function For Native Tokens
+    function rescueNative(
+        address payable userAddress,
+        uint256 amount
+    ) external onlyOwner {
+        userAddress.transfer(amount);
     }
 }
