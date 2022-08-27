@@ -70,7 +70,10 @@ contract FeeRouter is Ownable {
             "Integrator Id is already registered"
         );
 
-        require(feeConfig.feeSplits[0].owner != address(0), "ZERO_ADDRESS not owner");
+        require(
+            feeConfig.feeSplits[0].owner != address(0),
+            "ZERO_ADDRESS not owner"
+        );
         FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
         uint256 totalFeeInBps = feeConfig.totalFeeInBps;
         uint256 x = 0;
@@ -98,7 +101,10 @@ contract FeeRouter is Ownable {
             validIntegrators[integratorId] == 1,
             "Integrator Id is not registered"
         );
-        require(feeConfig.feeSplits[0].owner != address(0), "ZERO_ADDRESS not owner");
+        require(
+            feeConfig.feeSplits[0].owner != address(0),
+            "ZERO_ADDRESS not owner"
+        );
         FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
         uint256 totalFeeInBps = feeConfig.totalFeeInBps;
         uint256 x = 0;
@@ -123,30 +129,34 @@ contract FeeRouter is Ownable {
 
         if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
             for (uint256 i = 0; i < feeSplits.length; i++) {
-                uint256 amountToBeSent = (earnedFee *
+                if (feeSplits[i].owner != address(0)) {
+                    uint256 amountToBeSent = (earnedFee *
                     feeSplits[i].partOfTotalFeesInBps) / PRECISION;
-                payable(feeSplits[i].owner).transfer(amountToBeSent);
-                emit ClaimFee(
-                    integratorId,
-                    tokenAddress,
-                    amountToBeSent,
-                    feeSplits[i].owner
-                );
+                    payable(feeSplits[i].owner).transfer(amountToBeSent);
+                    emit ClaimFee(
+                        integratorId,
+                        tokenAddress,
+                        amountToBeSent,
+                        feeSplits[i].owner
+                    );
+                }
             }
         } else {
             for (uint256 i = 0; i < feeSplits.length; i++) {
-                uint256 amountToBeSent = (earnedFee *
+                if (feeSplits[i].owner != address(0)) {
+                    uint256 amountToBeSent = (earnedFee *
                     feeSplits[i].partOfTotalFeesInBps) / PRECISION;
-                IERC20(tokenAddress).safeTransfer(
-                    feeSplits[i].owner,
-                    amountToBeSent
-                );
-                emit ClaimFee(
-                    integratorId,
-                    tokenAddress,
-                    amountToBeSent,
-                    feeSplits[i].owner
-                );
+                    IERC20(tokenAddress).safeTransfer(
+                        feeSplits[i].owner,
+                        amountToBeSent
+                    );
+                    emit ClaimFee(
+                        integratorId,
+                        tokenAddress,
+                        amountToBeSent,
+                        feeSplits[i].owner
+                    );
+                }
             }
         }
         earnedTokenFeeMap[integratorId][tokenAddress] = 0;
@@ -178,12 +188,29 @@ contract FeeRouter is Ownable {
             );
             approvalAddress = routeAddress;
         }
+        if (inputTokenAddress != NATIVE_TOKEN_ADDRESS) {
+            IERC20(inputTokenAddress).safeTransferFrom(
+                msg.sender,
+                address(this),
+                _feeRequest.userRequest.amount
+            );
+        }
 
         FeeConfig memory feeConfig = feeConfigMapping[_feeRequest.integratorId];
         uint256 amountToBeSent = _feeRequest.userRequest.amount -
             ((_feeRequest.userRequest.amount * feeConfig.totalFeeInBps) /
                 PRECISION);
 
+        earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] = _feeRequest.userRequest.amount - amountToBeSent;
+        emit BridgeSocket(
+            _feeRequest.userRequest.amount,
+            inputTokenAddress,
+            _feeRequest.integratorId,
+            _feeRequest.userRequest.toChainId,
+            _feeRequest.userRequest.middlewareRequest.id,
+            _feeRequest.userRequest.bridgeRequest.id,
+            _feeRequest.userRequest.amount - amountToBeSent
+        );
         _feeRequest.userRequest.amount = amountToBeSent;
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
             socket.outboundTransferTo{value: amountToBeSent}(
@@ -196,15 +223,6 @@ contract FeeRouter is Ownable {
             );
             socket.outboundTransferTo(_feeRequest.userRequest);
         }
-        emit BridgeSocket(
-            _feeRequest.userRequest.amount,
-            inputTokenAddress,
-            _feeRequest.integratorId,
-            _feeRequest.userRequest.toChainId,
-            _feeRequest.userRequest.middlewareRequest.id,
-            _feeRequest.userRequest.bridgeRequest.id,
-            amountToBeSent
-        );
     }
 
     function getEarnedFee(address tokenAddress, uint256 integratorId)
@@ -215,6 +233,14 @@ contract FeeRouter is Ownable {
         return earnedTokenFeeMap[integratorId][tokenAddress];
     }
 
+    function getIsValidIntegrator(uint256 integratorId)
+        public
+        view
+        returns (uint256)
+    {
+        return validIntegrators[integratorId];
+    }
+
     function getFeeConfig(uint256 integratorId)
         public
         view
@@ -222,7 +248,6 @@ contract FeeRouter is Ownable {
     {
         return feeConfigMapping[integratorId];
     }
-
 
     // Rescue Function For ERC20
     function rescueFunds(
@@ -234,10 +259,10 @@ contract FeeRouter is Ownable {
     }
 
     // Rescue Function For Native Tokens
-    function rescueNative(
-        address payable userAddress,
-        uint256 amount
-    ) external onlyOwner {
+    function rescueNative(address payable userAddress, uint256 amount)
+        external
+        onlyOwner
+    {
         userAddress.transfer(amount);
     }
 }
