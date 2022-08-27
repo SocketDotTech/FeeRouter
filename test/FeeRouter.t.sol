@@ -516,7 +516,64 @@ contract FeeRouterTest is Test {
         assertEq(1e6, (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2)));
     }
 
-    // function claimFeeDAI() public {
+    function testClaimFeeDAI() public {
+        deal(sender1, 100e18);
+        deal(address(DAI), sender1, 1000e18);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
 
-    // }
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeConfig memory feeConfig;
+
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        feeConfig.feeSplits[0] = feeSplit1;
+        feeConfig.feeSplits[1] = feeSplit2;
+        feeConfig.totalFeeInBps = totalFees10;
+
+        feeRouter.registerFeeConfig(100, feeConfig);
+        vm.stopPrank();
+
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 1000e18;
+        feeRequest.userRequest.bridgeRequest.inputToken = DAI;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = DAI;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+
+        vm.startPrank(sender1);
+        IERC20(DAI).approve(address(feeRouter),1000e18);
+        // vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
+
+        assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        vm.stopPrank();
+
+        deal(feeTaker2, 100e18);
+        vm.startPrank(feeTaker2);
+
+        feeRouter.claimFee(address(DAI), 100);
+
+        // Assertions
+        assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(3*1e17, IERC20(DAI).balanceOf(feeTaker1));
+        assertEq(7*1e17, IERC20(DAI).balanceOf(feeTaker2));
+
+        assertEq(1e17, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
+    }
 }
