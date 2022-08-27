@@ -513,9 +513,9 @@ contract FeeRouterTest is Test {
         assertEq(3*1e5, IERC20(USDC).balanceOf(feeTaker1));
         assertEq(7*1e5, IERC20(USDC).balanceOf(feeTaker2));
 
-        assert(1e6, IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2));
+        assertEq(1e6, (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2)));
 
-        console.log("Total",IERC20(USDC).balanceOf(feeTaker1)  + IERC20(USDC).balanceOf(feeTaker2));
+        console.log("Total",IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2));
     }
 
     // function claimFeeDAI() public {

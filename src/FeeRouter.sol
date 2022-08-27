@@ -131,7 +131,7 @@ contract FeeRouter is Ownable {
             for (uint256 i = 0; i < feeSplits.length; i++) {
                 if (feeSplits[i].owner != address(0)) {
                     uint256 amountToBeSent = (earnedFee *
-                    feeSplits[i].partOfTotalFeesInBps) / PRECISION;
+                    feeSplits[i].partOfTotalFeesInBps) / integratorConfig.totalFeeInBps;
                     payable(feeSplits[i].owner).transfer(amountToBeSent);
                     emit ClaimFee(
                         integratorId,
@@ -145,7 +145,7 @@ contract FeeRouter is Ownable {
             for (uint256 i = 0; i < feeSplits.length; i++) {
                 if (feeSplits[i].owner != address(0)) {
                     uint256 amountToBeSent = (earnedFee *
-                    feeSplits[i].partOfTotalFeesInBps) / PRECISION;
+                    feeSplits[i].partOfTotalFeesInBps) / integratorConfig.totalFeeInBps;
                     IERC20(tokenAddress).safeTransfer(
                         feeSplits[i].owner,
                         amountToBeSent
