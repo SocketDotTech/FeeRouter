@@ -23,8 +23,26 @@ contract FeeRouter is Ownable {
     receive() external payable {}
 
     // Events
-    event RegisterFee(uint16 integratorId, FeeConfig feeConfig);
-    event UpdateFee(uint16 integratorId, FeeConfig feeConfig);
+    event RegisterFee(
+        uint16 integratorId,
+        uint16 totalFeeInBps,
+        uint16 part1,
+        uint16 part2,
+        uint16 part3,
+        address feeTaker1,
+        address feeTaker2,
+        address feeTaker3
+    );
+    event UpdateFee(
+        uint16 integratorId,
+        uint16 totalFeeInBps,
+        uint16 part1,
+        uint16 part2,
+        uint16 part3,
+        address feeTaker1,
+        address feeTaker2,
+        address feeTaker3
+    );
     event ClaimFee(
         uint16 integratorId,
         address tokenAddress,
@@ -43,6 +61,7 @@ contract FeeRouter is Ownable {
     struct FeeRequest {
         uint16 integratorId;
         ISocketRegistry.UserRequest userRequest;
+        uint256 inputAmount;
     }
 
     struct FeeSplits {
@@ -50,177 +69,256 @@ contract FeeRouter is Ownable {
         uint16 partOfTotalFeesInBps;
     }
 
-    struct FeeConfig {
-        uint16 totalFeeInBps;
-        FeeSplits[3] feeSplits;
-    }
-
-    mapping(uint16 => uint8) validIntegrators;
-    mapping(uint16 => FeeConfig) public feeConfigMapping;
+    mapping(uint16 => bool) validIntegrators;
+    mapping(uint16 => uint16) public totalFeeMapping;
+    mapping(uint16 => FeeSplits[3]) public feeSplitMapping;
     mapping(uint16 => mapping(address => uint256)) earnedTokenFeeMap;
 
+    // CORE FUNCTIONS ------------------------------------------------------------------------------------------------------>
     function registerFeeConfig(
         uint16 integratorId,
-        FeeConfig calldata feeConfig
+        uint16 totalFeeInBps,
+        FeeSplits[3] calldata feeSplits
     ) public onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
         require(
-            validIntegrators[integratorId] == 0,
+            validIntegrators[integratorId] == false,
             "Integrator Id is already registered"
         );
 
-        require(
-            feeConfig.feeSplits[0].owner != address(0),
-            "ZERO_ADDRESS not owner"
-        );
-        uint16 x = feeConfig.feeSplits[0].partOfTotalFeesInBps +
-            feeConfig.feeSplits[1].partOfTotalFeesInBps +
-            feeConfig.feeSplits[2].partOfTotalFeesInBps;
+        uint16 x = feeSplits[0].partOfTotalFeesInBps +
+            feeSplits[1].partOfTotalFeesInBps +
+            feeSplits[2].partOfTotalFeesInBps;
 
         require(
-            x == feeConfig.totalFeeInBps,
+            x == totalFeeInBps,
             "Total Fee in BPS should be equal to the summation of fees when split."
         );
 
-        feeConfigMapping[integratorId] = feeConfig;
-        validIntegrators[integratorId] = 1;
-        emit RegisterFee(integratorId, feeConfig);
+        totalFeeMapping[integratorId] = totalFeeInBps;
+        feeSplitMapping[integratorId] = feeSplits;
+        validIntegrators[integratorId] = true;
+        _emitRegisterFee(integratorId, totalFeeInBps, feeSplits);
     }
 
-    function updateFeeConfig(uint16 integratorId, FeeConfig calldata feeConfig)
-        public
-        onlyOwner
-    {
+    function updateFeeConfig(
+        uint16 integratorId,
+        uint16 totalFeeInBps,
+        FeeSplits[3] calldata feeSplits
+    ) public onlyOwner {
         require(
-            validIntegrators[integratorId] == 1,
+            validIntegrators[integratorId] == true,
             "Integrator Id is not registered"
         );
-        require(
-            feeConfig.feeSplits[0].owner != address(0),
-            "ZERO_ADDRESS not owner"
-        );
 
-        uint16 x = feeConfig.feeSplits[0].partOfTotalFeesInBps +
-            feeConfig.feeSplits[1].partOfTotalFeesInBps +
-            feeConfig.feeSplits[2].partOfTotalFeesInBps;
+        uint16 x = feeSplits[0].partOfTotalFeesInBps +
+            feeSplits[1].partOfTotalFeesInBps +
+            feeSplits[2].partOfTotalFeesInBps;
 
         require(
-            x == feeConfig.totalFeeInBps,
+            x == totalFeeInBps,
             "Total Fee in BPS should be equal to the summation of fees when split."
         );
 
-        feeConfigMapping[integratorId] = feeConfig;
-        emit UpdateFee(integratorId, feeConfig);
+        totalFeeMapping[integratorId] = totalFeeInBps;
+        feeSplitMapping[integratorId] = feeSplits;
+        _emitUpdateFee(integratorId, totalFeeInBps, feeSplits);
     }
 
     function claimFee(uint16 integratorId, address tokenAddress) public {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
-        FeeConfig memory integratorConfig = feeConfigMapping[integratorId];
+        FeeSplits[3] memory integratorFeeSplits = feeSplitMapping[integratorId];
         earnedTokenFeeMap[integratorId][tokenAddress] = 0;
 
         if (earnedFee == 0) return;
-        if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
-            for (uint8 i = 0; i < 3; i++) {
-                if (integratorConfig.feeSplits[i].owner != address(0)) {
-                    uint256 amountToBeSent = (earnedFee *
-                        integratorConfig.feeSplits[i].partOfTotalFeesInBps) /
-                        integratorConfig.totalFeeInBps;
-                    payable(integratorConfig.feeSplits[i].owner).transfer(amountToBeSent);
-                    emit ClaimFee(
-                        integratorId,
-                        tokenAddress,
-                        amountToBeSent,
-                        integratorConfig.feeSplits[i].owner
-                    );
-                }
-            }
-        } else {
-            for (uint8 i = 0; i < 3; i++) {
-                if (integratorConfig.feeSplits[i].owner != address(0)) {
-                    uint256 amountToBeSent = (earnedFee *
-                        integratorConfig.feeSplits[i].partOfTotalFeesInBps) /
-                        integratorConfig.totalFeeInBps;
-                    IERC20(tokenAddress).safeTransfer(
-                        integratorConfig.feeSplits[i].owner,
-                        amountToBeSent
-                    );
-                    emit ClaimFee(
-                        integratorId,
-                        tokenAddress,
-                        amountToBeSent,
-                        integratorConfig.feeSplits[i].owner
-                    );
-                }
-            }
+        for (uint8 i = 0; i < 3; i++) {
+            _calculateAndClaimFee(
+                integratorId,
+                earnedFee,
+                integratorFeeSplits[i].partOfTotalFeesInBps,
+                totalFeeMapping[integratorId],
+                integratorFeeSplits[i].owner,
+                tokenAddress
+            );
         }
     }
 
-    function deductFeeAndCallRegistry(FeeRequest memory _feeRequest) public {
-        address inputTokenAddress;
-        address approvalAddress;
+    function deductFeeAndCallRegistry(FeeRequest calldata _feeRequest) public {
         require(
-            validIntegrators[_feeRequest.integratorId] == 1,
+            validIntegrators[_feeRequest.integratorId] == true,
             "FeeConfig is not registered."
         );
-        if (_feeRequest.userRequest.middlewareRequest.id == 0) {
-            inputTokenAddress = _feeRequest
-                .userRequest
-                .bridgeRequest
-                .inputToken;
-            (address routeAddress, bool x, bool y) = socket.routes(
-                _feeRequest.userRequest.bridgeRequest.id
-            );
-            approvalAddress = routeAddress;
-        } else {
-            inputTokenAddress = _feeRequest
-                .userRequest
-                .middlewareRequest
-                .inputToken;
-            (address routeAddress, bool x, bool y) = socket.routes(
-                _feeRequest.userRequest.middlewareRequest.id
-            );
-            approvalAddress = routeAddress;
-        }
-        if (inputTokenAddress != NATIVE_TOKEN_ADDRESS) {
-            IERC20(inputTokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                _feeRequest.userRequest.amount
-            );
-        }
 
-        FeeConfig memory feeConfig = feeConfigMapping[_feeRequest.integratorId];
-        uint256 amountToBeSent = _feeRequest.userRequest.amount -
-            ((_feeRequest.userRequest.amount * feeConfig.totalFeeInBps) /
-                PRECISION);
-
-        earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] =
-            earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] +
-            _feeRequest.userRequest.amount -
-            amountToBeSent;
-        emit BridgeSocket(
-            _feeRequest.userRequest.amount,
-            inputTokenAddress,
-            _feeRequest.integratorId,
-            _feeRequest.userRequest.toChainId,
-            _feeRequest.userRequest.middlewareRequest.id,
-            _feeRequest.userRequest.bridgeRequest.id,
-            _feeRequest.userRequest.amount - amountToBeSent
+        // Get approval and token addresses.
+        address inputTokenAddress = _getInputTokenAddress(
+            _feeRequest.userRequest
         );
-        _feeRequest.userRequest.amount = amountToBeSent;
+        address approvalAddress = _getApprovalAddress(_feeRequest.userRequest);
+
+        // Get amount to the contract if ERC20
+        if (inputTokenAddress != NATIVE_TOKEN_ADDRESS) {
+            _getUserFundsToFeeRouter(
+                msg.sender,
+                _feeRequest.inputAmount,
+                inputTokenAddress
+            );
+        }
+
+        // Calculate Amount to Send to Registry.
+        uint256 registryAmount = _getAmountForRegistry(
+            _feeRequest.integratorId,
+            _feeRequest.inputAmount
+        );
+
+        // Update the earned fee for the token and integrator.
+        _updateEarnedFee(
+            _feeRequest.integratorId,
+            inputTokenAddress,
+            _feeRequest.inputAmount,
+            registryAmount
+        );
+
+        // Call Registry
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
-            socket.outboundTransferTo{value: amountToBeSent}(
+            socket.outboundTransferTo{value: registryAmount}(
                 _feeRequest.userRequest
             );
         } else {
             IERC20(inputTokenAddress).safeApprove(
                 approvalAddress,
-                amountToBeSent
+                registryAmount
             );
             socket.outboundTransferTo(_feeRequest.userRequest);
         }
+
+        // Emit Bridge Event
+        _emitBridgeSocket(_feeRequest, inputTokenAddress, registryAmount);
     }
 
+    // INTERNAL UTILITY FUNCTION ------------------------------------------------------------------------------------------------------>
+    function _calculateAndClaimFee(
+        uint16 integratorId,
+        uint256 earnedFee,
+        uint16 part,
+        uint16 total,
+        address owner,
+        address tokenAddress
+    ) internal {
+        if (owner != address(0)) {
+            uint256 amountToBeSent = (earnedFee * part) / total;
+            if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
+                payable(owner).transfer(amountToBeSent);
+                return;
+            }
+            IERC20(tokenAddress).safeTransfer(owner, amountToBeSent);
+            emit ClaimFee(integratorId, tokenAddress, amountToBeSent, owner);
+        }
+    }
+
+    function _getApprovalAddress(
+        ISocketRegistry.UserRequest calldata userRequest
+    ) internal returns (address) {
+        if (userRequest.middlewareRequest.id == 0) {
+            (address routeAddress, , ) = socket.routes(
+                userRequest.bridgeRequest.id
+            );
+            return routeAddress;
+        } else {
+            (address routeAddress, , ) = socket.routes(
+                userRequest.middlewareRequest.id
+            );
+            return routeAddress;
+        }
+    }
+
+    function _getInputTokenAddress(
+        ISocketRegistry.UserRequest calldata userRequest
+    ) internal returns (address) {
+        if (userRequest.middlewareRequest.id == 0) {
+            return userRequest.bridgeRequest.inputToken;
+        } else {
+            return userRequest.middlewareRequest.inputToken;
+        }
+    }
+
+    function _getUserFundsToFeeRouter(
+        address user,
+        uint256 amount,
+        address tokenAddress
+    ) internal {
+        IERC20(tokenAddress).safeTransferFrom(user, address(this), amount);
+    }
+
+    function _getAmountForRegistry(uint16 integratorId, uint256 amount)
+        internal
+        returns (uint256)
+    {
+        return amount - ((amount * totalFeeMapping[integratorId]) / PRECISION);
+    }
+
+    function _updateEarnedFee(
+        uint16 integratorId,
+        address inputTokenAddress,
+        uint256 amount,
+        uint256 registryAmount
+    ) internal {
+        earnedTokenFeeMap[integratorId][inputTokenAddress] =
+            earnedTokenFeeMap[integratorId][inputTokenAddress] +
+            amount -
+            registryAmount;
+    }
+
+    function _emitBridgeSocket(
+        FeeRequest calldata _feeRequest,
+        address tokenAddress,
+        uint256 registryAmount
+    ) internal {
+        emit BridgeSocket(
+            _feeRequest.inputAmount,
+            tokenAddress,
+            _feeRequest.integratorId,
+            _feeRequest.userRequest.toChainId,
+            _feeRequest.userRequest.middlewareRequest.id,
+            _feeRequest.userRequest.bridgeRequest.id,
+            _feeRequest.inputAmount - registryAmount
+        );
+    }
+
+    function _emitUpdateFee(
+        uint16 integratorId,
+        uint16 totalFeeInBps,
+        FeeSplits[3] calldata feeSplits
+    ) internal {
+        emit UpdateFee(
+            integratorId,
+            totalFeeInBps,
+            feeSplits[0].partOfTotalFeesInBps,
+            feeSplits[1].partOfTotalFeesInBps,
+            feeSplits[2].partOfTotalFeesInBps,
+            feeSplits[0].owner,
+            feeSplits[1].owner,
+            feeSplits[2].owner
+        );
+    }
+
+    function _emitRegisterFee(
+        uint16 integratorId,
+        uint16 totalFeeInBps,
+        FeeSplits[3] calldata feeSplits
+    ) internal {
+        emit RegisterFee(
+            integratorId,
+            totalFeeInBps,
+            feeSplits[0].partOfTotalFeesInBps,
+            feeSplits[1].partOfTotalFeesInBps,
+            feeSplits[2].partOfTotalFeesInBps,
+            feeSplits[0].owner,
+            feeSplits[1].owner,
+            feeSplits[2].owner
+        );
+    }
+
+    // VIEW FUNCTIONS --------------------------------------------------------------------------------------------------------->
     function getEarnedFee(address tokenAddress, uint16 integratorId)
         public
         view
@@ -232,20 +330,28 @@ contract FeeRouter is Ownable {
     function getValidIntegrator(uint16 integratorId)
         public
         view
-        returns (uint8)
+        returns (bool)
     {
         return validIntegrators[integratorId];
     }
 
-    function getFeeConfig(uint16 integratorId)
+    function getTotalFeeInBps(uint16 integratorId)
         public
         view
-        returns (FeeConfig memory feeConfig)
+        returns (uint16)
     {
-        return feeConfigMapping[integratorId];
+        return totalFeeMapping[integratorId];
     }
 
-    // Rescue Function For ERC20
+    // function getFeeSplits(uint16 integratorId)
+    //     public
+    //     view
+    //     returns (FeeSplits[])
+    // {
+    //     return feeSplitMapping[integratorId];
+    // }
+
+    // RESCUE FUNCTIONS ------------------------------------------------------------------------------------------------------>
     function rescueFunds(
         address token,
         address userAddress,
@@ -254,7 +360,6 @@ contract FeeRouter is Ownable {
         IERC20(token).safeTransfer(userAddress, amount);
     }
 
-    // Rescue Function For Native Tokens
     function rescueNative(address payable userAddress, uint256 amount)
         external
         onlyOwner
