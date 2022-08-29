@@ -1,7 +1,6 @@
 pragma solidity ^0.8.4;
 
 import "./interfaces/ISocketRegistry.sol";
-import "./utils/AccessControl.sol";
 import "./utils/Ownable.sol";
 import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -14,7 +13,7 @@ contract FeeRouter is Ownable {
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     ISocketRegistry public immutable socket;
 
-    uint256 immutable PRECISION = 10000;
+    uint16 immutable PRECISION = 10000;
 
     constructor(address _socketRegistry, address owner_) Ownable(owner_) {
         socket = ISocketRegistry(_socketRegistry);
@@ -24,10 +23,10 @@ contract FeeRouter is Ownable {
     receive() external payable {}
 
     // Events
-    event RegisterFee(uint256 integratorId, FeeConfig feeConfig);
-    event UpdateFee(uint256 integratorId, FeeConfig feeConfig);
+    event RegisterFee(uint16 integratorId, FeeConfig feeConfig);
+    event UpdateFee(uint16 integratorId, FeeConfig feeConfig);
     event ClaimFee(
-        uint256 integratorId,
+        uint16 integratorId,
         address tokenAddress,
         uint256 amount,
         address owner
@@ -35,33 +34,33 @@ contract FeeRouter is Ownable {
     event BridgeSocket(
         uint256 amount,
         address inputTokenAddress,
-        uint256 integratorId,
+        uint16 integratorId,
         uint256 toChainId,
         uint256 middlewareId,
         uint256 bridgeId,
         uint256 totalFee
     );
     struct FeeRequest {
-        uint256 integratorId;
+        uint16 integratorId;
         ISocketRegistry.UserRequest userRequest;
     }
 
     struct FeeSplits {
         address owner;
-        uint256 partOfTotalFeesInBps;
+        uint16 partOfTotalFeesInBps;
     }
 
     struct FeeConfig {
-        uint256 totalFeeInBps;
+        uint16 totalFeeInBps;
         FeeSplits[3] feeSplits;
     }
 
-    mapping(uint256 => uint256) validIntegrators;
-    mapping(uint256 => FeeConfig) public feeConfigMapping;
-    mapping(uint256 => mapping(address => uint256)) earnedTokenFeeMap;
+    mapping(uint16 => uint8) validIntegrators;
+    mapping(uint16 => FeeConfig) public feeConfigMapping;
+    mapping(uint16 => mapping(address => uint256)) earnedTokenFeeMap;
 
     function registerFeeConfig(
-        uint256 integratorId,
+        uint16 integratorId,
         FeeConfig calldata feeConfig
     ) public onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
@@ -74,17 +73,12 @@ contract FeeRouter is Ownable {
             feeConfig.feeSplits[0].owner != address(0),
             "ZERO_ADDRESS not owner"
         );
-        FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
-        uint256 totalFeeInBps = feeConfig.totalFeeInBps;
-        uint256 x = 0;
-
-        // Can add a check for owner to be not 0, but have ignored it since its a wierd check if we are the ones calling it.
-        for (uint256 i = 0; i < feeSplits.length; i++) {
-            x = x + feeSplits[i].partOfTotalFeesInBps;
-        }
+        uint16 x = feeConfig.feeSplits[0].partOfTotalFeesInBps +
+            feeConfig.feeSplits[1].partOfTotalFeesInBps +
+            feeConfig.feeSplits[2].partOfTotalFeesInBps;
 
         require(
-            x == totalFeeInBps,
+            x == feeConfig.totalFeeInBps,
             "Total Fee in BPS should be equal to the summation of fees when split."
         );
 
@@ -93,7 +87,7 @@ contract FeeRouter is Ownable {
         emit RegisterFee(integratorId, feeConfig);
     }
 
-    function updateFeeConfig(uint256 integratorId, FeeConfig calldata feeConfig)
+    function updateFeeConfig(uint16 integratorId, FeeConfig calldata feeConfig)
         public
         onlyOwner
     {
@@ -105,15 +99,13 @@ contract FeeRouter is Ownable {
             feeConfig.feeSplits[0].owner != address(0),
             "ZERO_ADDRESS not owner"
         );
-        FeeSplits[3] memory feeSplits = feeConfig.feeSplits;
-        uint256 totalFeeInBps = feeConfig.totalFeeInBps;
-        uint256 x = 0;
-        for (uint256 i = 0; i < feeSplits.length; i++) {
-            x = x + feeSplits[i].partOfTotalFeesInBps;
-        }
+
+        uint16 x = feeConfig.feeSplits[0].partOfTotalFeesInBps +
+            feeConfig.feeSplits[1].partOfTotalFeesInBps +
+            feeConfig.feeSplits[2].partOfTotalFeesInBps;
 
         require(
-            x == totalFeeInBps,
+            x == feeConfig.totalFeeInBps,
             "Total Fee in BPS should be equal to the summation of fees when split."
         );
 
@@ -121,45 +113,46 @@ contract FeeRouter is Ownable {
         emit UpdateFee(integratorId, feeConfig);
     }
 
-    function claimFee(address tokenAddress, uint256 integratorId) public {
+    function claimFee(uint16 integratorId, address tokenAddress) public {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
         FeeConfig memory integratorConfig = feeConfigMapping[integratorId];
+        earnedTokenFeeMap[integratorId][tokenAddress] = 0;
 
-        FeeSplits[3] memory feeSplits = integratorConfig.feeSplits;
-
+        if (earnedFee == 0) return;
         if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
-            for (uint256 i = 0; i < feeSplits.length; i++) {
-                if (feeSplits[i].owner != address(0)) {
+            for (uint8 i = 0; i < 3; i++) {
+                if (integratorConfig.feeSplits[i].owner != address(0)) {
                     uint256 amountToBeSent = (earnedFee *
-                    feeSplits[i].partOfTotalFeesInBps) / integratorConfig.totalFeeInBps;
-                    payable(feeSplits[i].owner).transfer(amountToBeSent);
+                        integratorConfig.feeSplits[i].partOfTotalFeesInBps) /
+                        integratorConfig.totalFeeInBps;
+                    payable(integratorConfig.feeSplits[i].owner).transfer(amountToBeSent);
                     emit ClaimFee(
                         integratorId,
                         tokenAddress,
                         amountToBeSent,
-                        feeSplits[i].owner
+                        integratorConfig.feeSplits[i].owner
                     );
                 }
             }
         } else {
-            for (uint256 i = 0; i < feeSplits.length; i++) {
-                if (feeSplits[i].owner != address(0)) {
+            for (uint8 i = 0; i < 3; i++) {
+                if (integratorConfig.feeSplits[i].owner != address(0)) {
                     uint256 amountToBeSent = (earnedFee *
-                    feeSplits[i].partOfTotalFeesInBps) / integratorConfig.totalFeeInBps;
+                        integratorConfig.feeSplits[i].partOfTotalFeesInBps) /
+                        integratorConfig.totalFeeInBps;
                     IERC20(tokenAddress).safeTransfer(
-                        feeSplits[i].owner,
+                        integratorConfig.feeSplits[i].owner,
                         amountToBeSent
                     );
                     emit ClaimFee(
                         integratorId,
                         tokenAddress,
                         amountToBeSent,
-                        feeSplits[i].owner
+                        integratorConfig.feeSplits[i].owner
                     );
                 }
             }
         }
-        earnedTokenFeeMap[integratorId][tokenAddress] = 0;
     }
 
     function deductFeeAndCallRegistry(FeeRequest memory _feeRequest) public {
@@ -201,7 +194,10 @@ contract FeeRouter is Ownable {
             ((_feeRequest.userRequest.amount * feeConfig.totalFeeInBps) /
                 PRECISION);
 
-        earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] = _feeRequest.userRequest.amount - amountToBeSent;
+        earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] =
+            earnedTokenFeeMap[_feeRequest.integratorId][inputTokenAddress] +
+            _feeRequest.userRequest.amount -
+            amountToBeSent;
         emit BridgeSocket(
             _feeRequest.userRequest.amount,
             inputTokenAddress,
@@ -225,7 +221,7 @@ contract FeeRouter is Ownable {
         }
     }
 
-    function getEarnedFee(address tokenAddress, uint256 integratorId)
+    function getEarnedFee(address tokenAddress, uint16 integratorId)
         public
         view
         returns (uint256)
@@ -233,15 +229,15 @@ contract FeeRouter is Ownable {
         return earnedTokenFeeMap[integratorId][tokenAddress];
     }
 
-    function getIsValidIntegrator(uint256 integratorId)
+    function getValidIntegrator(uint16 integratorId)
         public
         view
-        returns (uint256)
+        returns (uint8)
     {
         return validIntegrators[integratorId];
     }
 
-    function getFeeConfig(uint256 integratorId)
+    function getFeeConfig(uint16 integratorId)
         public
         view
         returns (FeeConfig memory feeConfig)

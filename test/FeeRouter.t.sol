@@ -12,10 +12,10 @@ import "../src/utils/Ownable.sol";
 import "../src/FeeRouter.sol";
 
 contract FeeRouterTest is Test {
-    event RegisterFee(uint256 integratorId, FeeRouter.FeeConfig feeConfig);
-    event UpdateFee(uint256 integratorId, FeeRouter.FeeConfig feeConfig);
+    event RegisterFee(uint16 integratorId, FeeRouter.FeeConfig feeConfig);
+    event UpdateFee(uint16 integratorId, FeeRouter.FeeConfig feeConfig);
     event ClaimFee(
-        uint256 integratorId,
+        uint16 integratorId,
         address tokenAddress,
         uint256 amount,
         address owner
@@ -23,7 +23,7 @@ contract FeeRouterTest is Test {
     event BridgeSocket(
         uint256 amount,
         address inputTokenAddress,
-        uint256 integratorId,
+        uint16 integratorId,
         uint256 toChainId,
         uint256 middlewareId,
         uint256 bridgeId,
@@ -38,16 +38,16 @@ contract FeeRouterTest is Test {
     address constant feeTaker1 = 0x3db45921CCb05A28270E2F99B49A33E65C065983;
     address constant feeTaker2 = 0x0e038Ad2838aa71eC990E61688C08F395E92b9d9;
     address constant sender1 = 0xD07E50196a05e6f9E6656EFaE10fc9963BEd6E57;
-    uint256 integratorId = 3;
-    uint256 totalFees10 = stdMath.abs(10);
-    uint256 totalFees100 = stdMath.abs(100);
-    uint256 part3 = stdMath.abs(3);
-    uint256 part7 = stdMath.abs(7);
-    uint256 part4 = stdMath.abs(4);
+    uint16 integratorId = 3;
+    uint16 totalFees10 = 10;
+    uint16 totalFees100 = 100;
+    uint16 part3 = 3;
+    uint16 part7 = 7;
+    uint16 part4 = 4;
 
-    uint256 part30 = stdMath.abs(30);
-    uint256 part70 = stdMath.abs(70);
-    uint256 part40 = stdMath.abs(40);
+    uint16 part30 = 30;
+    uint16 part70 = 70;
+    uint16 part40 = 40;
 
     function setUp() public {
         feeRouter = new FeeRouter(
@@ -506,7 +506,7 @@ contract FeeRouterTest is Test {
         deal(feeTaker2, 100e18);
         vm.startPrank(feeTaker2);
 
-        feeRouter.claimFee(address(USDC), 100);
+        feeRouter.claimFee(100,address(USDC));
 
         // Assertions
         assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
@@ -567,13 +567,13 @@ contract FeeRouterTest is Test {
         deal(feeTaker2, 100e18);
         vm.startPrank(feeTaker2);
 
-        feeRouter.claimFee(address(DAI), 100);
+        feeRouter.claimFee(100, address(DAI));
 
         // Assertions
         assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
         assertEq(3*1e17, IERC20(DAI).balanceOf(feeTaker1));
         assertEq(7*1e17, IERC20(DAI).balanceOf(feeTaker2));
 
-        assertEq(1e17, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
+        assertEq(1e18, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
     }
 }
