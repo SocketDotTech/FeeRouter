@@ -223,7 +223,7 @@ contract FeeRouter is Ownable {
 
     function _getApprovalAddress(
         ISocketRegistry.UserRequest calldata userRequest
-    ) internal returns (address) {
+    ) internal view returns (address) {
         if (userRequest.middlewareRequest.id == 0) {
             (address routeAddress, , ) = socket.routes(
                 userRequest.bridgeRequest.id
@@ -239,7 +239,7 @@ contract FeeRouter is Ownable {
 
     function _getInputTokenAddress(
         ISocketRegistry.UserRequest calldata userRequest
-    ) internal returns (address) {
+    ) internal pure returns (address) {
         if (userRequest.middlewareRequest.id == 0) {
             return userRequest.bridgeRequest.inputToken;
         } else {
@@ -257,6 +257,7 @@ contract FeeRouter is Ownable {
 
     function _getAmountForRegistry(uint16 integratorId, uint256 amount)
         internal
+        view
         returns (uint256)
     {
         return amount - ((amount * totalFeeMapping[integratorId]) / PRECISION);
