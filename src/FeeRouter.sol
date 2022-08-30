@@ -2,7 +2,7 @@ pragma solidity ^0.8.4;
 
 import "./interfaces/ISocketRegistry.sol";
 import "./utils/Ownable.sol";
-import "forge-std/console.sol";
+// import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // import "forge-std/console.sol";
@@ -12,6 +12,10 @@ contract FeeRouter is Ownable {
     address private constant NATIVE_TOKEN_ADDRESS =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     ISocketRegistry public immutable socket;
+
+    error IntegratorIdAlreadyRegistered();
+    error TotalFeeAndPartsMismatch();
+    error IntegratorIdNotRegistered();
 
     uint16 immutable PRECISION = 10000;
 
@@ -81,22 +85,19 @@ contract FeeRouter is Ownable {
         FeeSplits[3] calldata feeSplits
     ) public onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
-        require(
-            validIntegrators[integratorId] == false,
-            "Integrator Id is already registered"
-        );
+        if (validIntegrators[integratorId] != false)
+            revert IntegratorIdAlreadyRegistered();
 
         uint16 x = feeSplits[0].partOfTotalFeesInBps +
             feeSplits[1].partOfTotalFeesInBps +
             feeSplits[2].partOfTotalFeesInBps;
 
-        require(
-            x == totalFeeInBps,
-            "Total Fee in BPS should be equal to the summation of fees when split."
-        );
+        if (x != totalFeeInBps) revert TotalFeeAndPartsMismatch();
 
         totalFeeMapping[integratorId] = totalFeeInBps;
-        feeSplitMapping[integratorId] = feeSplits;
+        feeSplitMapping[integratorId][0] = feeSplits[0];
+        feeSplitMapping[integratorId][1] = feeSplits[1];
+        feeSplitMapping[integratorId][2] = feeSplits[2];
         validIntegrators[integratorId] = true;
         _emitRegisterFee(integratorId, totalFeeInBps, feeSplits);
     }
@@ -106,22 +107,20 @@ contract FeeRouter is Ownable {
         uint16 totalFeeInBps,
         FeeSplits[3] calldata feeSplits
     ) public onlyOwner {
-        require(
-            validIntegrators[integratorId] == true,
-            "Integrator Id is not registered"
-        );
+        if (validIntegrators[integratorId] != true)
+            revert IntegratorIdNotRegistered();
 
         uint16 x = feeSplits[0].partOfTotalFeesInBps +
             feeSplits[1].partOfTotalFeesInBps +
             feeSplits[2].partOfTotalFeesInBps;
 
-        require(
-            x == totalFeeInBps,
-            "Total Fee in BPS should be equal to the summation of fees when split."
-        );
+        if (x != totalFeeInBps) revert TotalFeeAndPartsMismatch();
 
         totalFeeMapping[integratorId] = totalFeeInBps;
-        feeSplitMapping[integratorId] = feeSplits;
+        feeSplitMapping[integratorId][0] = feeSplits[0];
+        feeSplitMapping[integratorId][1] = feeSplits[1];
+        feeSplitMapping[integratorId][2] = feeSplits[2];
+        validIntegrators[integratorId] = true;
         _emitUpdateFee(integratorId, totalFeeInBps, feeSplits);
     }
 
@@ -144,10 +143,8 @@ contract FeeRouter is Ownable {
     }
 
     function deductFeeAndCallRegistry(FeeRequest calldata _feeRequest) public {
-        require(
-            validIntegrators[_feeRequest.integratorId] == true,
-            "FeeConfig is not registered."
-        );
+        if (validIntegrators[_feeRequest.integratorId] != true)
+            revert IntegratorIdNotRegistered();
 
         // Get approval and token addresses.
         address inputTokenAddress = _getInputTokenAddress(
@@ -343,13 +340,13 @@ contract FeeRouter is Ownable {
         return totalFeeMapping[integratorId];
     }
 
-    // function getFeeSplits(uint16 integratorId)
-    //     public
-    //     view
-    //     returns (FeeSplits[])
-    // {
-    //     return feeSplitMapping[integratorId];
-    // }
+    function getFeeSplits(uint16 integratorId)
+        public
+        view
+        returns (FeeSplits[3] memory feeSplits)
+    {
+        return feeSplitMapping[integratorId];
+    }
 
     // RESCUE FUNCTIONS ------------------------------------------------------------------------------------------------------>
     function rescueFunds(
