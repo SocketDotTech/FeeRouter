@@ -55,9 +55,9 @@ contract FeeRouter is Ownable {
         address owner
     );
     event BridgeSocket(
+        uint16 integratorId,
         uint256 amount,
         address inputTokenAddress,
-        uint16 integratorId,
         uint256 toChainId,
         uint256 middlewareId,
         uint256 bridgeId,
@@ -281,9 +281,9 @@ contract FeeRouter is Ownable {
         uint256 registryAmount
     ) internal {
         emit BridgeSocket(
+            _feeRequest.integratorId,
             _feeRequest.inputAmount,
             tokenAddress,
-            _feeRequest.integratorId,
             _feeRequest.userRequest.toChainId,
             _feeRequest.userRequest.middlewareRequest.id,
             _feeRequest.userRequest.bridgeRequest.id,

@@ -39,9 +39,9 @@ contract FeeRouterTest is Test {
         address owner
     );
     event BridgeSocket(
+        uint16 integratorId,
         uint256 amount,
         address inputTokenAddress,
-        uint16 integratorId,
         uint256 toChainId,
         uint256 middlewareId,
         uint256 bridgeId,
