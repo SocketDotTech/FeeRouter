@@ -56,6 +56,8 @@ contract FeeRouterTest is Test {
     address constant feeTaker1 = 0x3db45921CCb05A28270E2F99B49A33E65C065983;
     address constant feeTaker2 = 0x0e038Ad2838aa71eC990E61688C08F395E92b9d9;
     address constant sender1 = 0xD07E50196a05e6f9E6656EFaE10fc9963BEd6E57;
+    address private constant NATIVE_TOKEN_ADDRESS =
+        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     uint16 integratorId = 3;
     uint16 totalFees10 = 10;
     uint16 totalFees0 = 0;
@@ -229,351 +231,475 @@ contract FeeRouterTest is Test {
         vm.stopPrank();
     }
 
-    // Should not set the owner fo the first fee split to 0, assumption being that there should be an owner to claim the fee.
-    function testUpdateFeeRevertForZeroOwner() public {
+    // Should Successfully Update the fee after registration.
+    function testUpdateFeeSuccessWithAssertions() public {
         vm.startPrank(owner);
-        FeeRouter.FeeConfig memory feeConfig;
 
-        feeConfig.totalFeeInBps = 0;
-        feeConfig.feeSplits[0].owner = feeTaker1;
-        feeRouter.registerFeeConfig(1, feeConfig);
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-        feeConfig.feeSplits[0].owner = address(0);
-        vm.expectRevert(abi.encodePacked("ZERO_ADDRESS not owner"));
-        feeRouter.updateFeeConfig(1, feeConfig);
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
+
+        feeRouter.registerFeeConfig(integratorId, totalFees10, feeSplits);
+
+        feeSplit1.partOfTotalFeesInBps = part30;
+        feeSplit2.partOfTotalFeesInBps = part70;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
+
+        // Emits Event
+        vm.expectEmit(false, false, false, true);
+        emit UpdateFee(integratorId, totalFees100, part30, part70, 0, feeTaker1, feeTaker2, address(0));
+        feeRouter.updateFeeConfig(integratorId, totalFees100, feeSplits);
+
+        FeeRouter.FeeSplits[3] memory registerFeeSplits = feeRouter.getFeeSplits(integratorId);
+        uint16 registeredTotalFees = feeRouter.getTotalFeeInBps(integratorId);
+
+        // Assertions.
+        assertEq(totalFees100, registeredTotalFees);
+        assertEq(feeTaker1, registerFeeSplits[0].owner);
+        assertEq(feeTaker2, registerFeeSplits[1].owner);
+        assertEq(part30, registerFeeSplits[0].partOfTotalFeesInBps);
+        assertEq(part70, registerFeeSplits[1].partOfTotalFeesInBps);
+
         vm.stopPrank();
     }
 
-    // // Should Successfully Update the fee after registration.
-    // function testUpdateFeeSuccessWithAssertions() public {
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
+    // Should revert if the parts and the total fee do not match.
+    function testUpdateFeeRevertForUnequalParts() public {
+        vm.startPrank(owner);
 
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
+        // Create FeeSplit - 1
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
 
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     feeRouter.registerFeeConfig(integratorId, feeConfig);
+        feeRouter.registerFeeConfig(integratorId, totalFees10, feeSplits);
 
-    //     feeSplit1.partOfTotalFeesInBps = part30;
-    //     feeSplit2.partOfTotalFeesInBps = part70;
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees100;
+        feeSplit1.partOfTotalFeesInBps = part30;
+        feeSplit2.partOfTotalFeesInBps = part70;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     // Emits Event
-    //     vm.expectEmit(false, false, false, true);
-    //     emit UpdateFee(integratorId, feeConfig);
-    //     feeRouter.updateFeeConfig(integratorId, feeConfig);
+        // Emits Event
+        vm.expectRevert(FeeRouter.TotalFeeAndPartsMismatch.selector);
+        feeRouter.updateFeeConfig(integratorId, totalFees10, feeSplits);
+    }
 
-    //     // Get Fee Config
-    //     FeeRouter.FeeConfig memory registeredFeeConfig = feeRouter.getFeeConfig(
-    //         integratorId
-    //     );
-
-    //     // Assertions.
-    //     assertEq(totalFees100, registeredFeeConfig.totalFeeInBps);
-    //     assertEq(feeTaker1, registeredFeeConfig.feeSplits[0].owner);
-    //     assertEq(feeTaker2, registeredFeeConfig.feeSplits[1].owner);
-    //     assertEq(part30, registeredFeeConfig.feeSplits[0].partOfTotalFeesInBps);
-    //     assertEq(part70, registeredFeeConfig.feeSplits[1].partOfTotalFeesInBps);
-
-    //     vm.stopPrank();
-    // }
-
-    // // Should revert if the parts and the total fee do not match.
-    // function testUpdateFeeRevertForUnequalParts() public {
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
-
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
-
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
-
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
-
-    //     feeRouter.registerFeeConfig(integratorId, feeConfig);
-
-    //     feeSplit1.partOfTotalFeesInBps = part3;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees100;
-
-    //     // Emits Event
-    //     vm.expectRevert(abi.encodePacked("Total Fee in BPS should be equal to the summation of fees when split."));
-    //     feeRouter.updateFeeConfig(integratorId, feeConfig);
-    // }
-
-    // // FEE DEDUCTION TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+    // FEE DEDUCTION TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
     
-    // // Unregistered Integrator Ids should be reverted.
-    // function testDeductionOfFeeWithUnregisteredIntegratorId() public {
-    //     deal(sender1, 100e18);
-    //     deal(address(DAI), sender1, 1000e18);
-    //     assertEq(sender1.balance, 100e18);
-    //     assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
+    // Unregistered Integrator Ids should be reverted.
+    function testDeductionOfFeeWithUnregisteredIntegratorId() public {
+        deal(sender1, 100e18);
+        deal(address(DAI), sender1, 1000e18);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
 
-    //     FeeRouter.FeeRequest memory feeRequest;
-    //     feeRequest.integratorId = 100;
-    //     feeRequest.userRequest.receiverAddress = sender1;
-    //     feeRequest.userRequest.toChainId = 137;
-    //     feeRequest.userRequest.amount = 1000e18;
-    //     feeRequest.userRequest.bridgeRequest.inputToken = DAI;
-    //     feeRequest.userRequest.bridgeRequest.id = 2;
-    //     feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-    //     feeRequest.userRequest.middlewareRequest.inputToken = DAI;
-    //     feeRequest.userRequest.middlewareRequest.id = 0;
-    //     feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 1000e18;
+        feeRequest.userRequest.bridgeRequest.inputToken = DAI;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = DAI;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e18;
 
-    //     vm.startPrank(sender1);
-    //     vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
-    //     feeRouter.deductFeeAndCallRegistry(feeRequest);
-    //     vm.stopPrank();
-    // }
+        vm.startPrank(sender1);
+        vm.expectRevert(FeeRouter.IntegratorIdNotRegistered.selector);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        vm.stopPrank();
+    }
 
-    // // Deduction of Fee should be accurate. 
-    // function testDeductFeeAndCallRegistryForDAI() public {
-    //     deal(sender1, 100e18);
-    //     deal(address(DAI), sender1, 1000e18);
-    //     assertEq(sender1.balance, 100e18);
-    //     assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
+    // Deduction of Fee should be accurate. 
+    function testRevertFeeMismatch() public {
+        deal(sender1, 100e18);
+        deal(address(DAI), sender1, 1000e18);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
 
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
 
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
 
-    //     feeRouter.registerFeeConfig(100, feeConfig);
-    //     vm.stopPrank();
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 1000e18;
+        feeRequest.userRequest.bridgeRequest.inputToken = DAI;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = DAI;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e18;
 
-    //     FeeRouter.FeeRequest memory feeRequest;
-    //     feeRequest.integratorId = 100;
-    //     feeRequest.userRequest.receiverAddress = sender1;
-    //     feeRequest.userRequest.toChainId = 137;
-    //     feeRequest.userRequest.amount = 1000e18;
-    //     feeRequest.userRequest.bridgeRequest.inputToken = DAI;
-    //     feeRequest.userRequest.bridgeRequest.id = 2;
-    //     feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-    //     feeRequest.userRequest.middlewareRequest.inputToken = DAI;
-    //     feeRequest.userRequest.middlewareRequest.id = 0;
-    //     feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        vm.startPrank(sender1);
+        IERC20(DAI).approve(address(feeRouter),1000e18);
+        vm.expectRevert(FeeRouter.FeeMisMatch.selector);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
 
-    //     vm.startPrank(sender1);
-    //     IERC20(DAI).approve(address(feeRouter),1000e18);
-    //     // vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
-    //     feeRouter.deductFeeAndCallRegistry(feeRequest);
+        // assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        vm.stopPrank();
+    }
 
-    //     assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
-    //     vm.stopPrank();
-    // }
+    // Deduction of Fee should be accurate. 
+    function testDeductFeeAndCallRegistryForDAI() public {
+        deal(sender1, 100e18);
+        deal(address(DAI), sender1, 1000e18);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
 
-    // function testDeductFeeAndCallRegistryForUSDC() public {
-    //     deal(sender1, 100e18);
-    //     deal(address(USDC), sender1, 1000e6);
-    //     assertEq(sender1.balance, 100e18);
-    //     assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
 
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
 
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e18;
+        feeRequest.userRequest.bridgeRequest.inputToken = DAI;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = DAI;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e18;
 
-    //     feeRouter.registerFeeConfig(100, feeConfig);
-    //     vm.stopPrank();
+        vm.startPrank(sender1);
+        IERC20(DAI).approve(address(feeRouter),1000e18);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
 
-    //     FeeRouter.FeeRequest memory feeRequest;
-    //     feeRequest.integratorId = 100;
-    //     feeRequest.userRequest.receiverAddress = sender1;
-    //     feeRequest.userRequest.toChainId = 137;
-    //     feeRequest.userRequest.amount = 1000e6;
-    //     feeRequest.userRequest.bridgeRequest.inputToken = USDC;
-    //     feeRequest.userRequest.bridgeRequest.id = 2;
-    //     feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-    //     feeRequest.userRequest.middlewareRequest.inputToken = USDC;
-    //     feeRequest.userRequest.middlewareRequest.id = 0;
-    //     feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        vm.stopPrank();
+    }
 
-    //     vm.startPrank(sender1);
-    //     IERC20(USDC).approve(address(feeRouter),1000e6);
-    //     // vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
-    //     feeRouter.deductFeeAndCallRegistry(feeRequest);
+    function testDeductFeeAndCallRegistryForUSDC() public {
+        deal(sender1, 100e18);
+        deal(address(USDC), sender1, 1000e6);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
 
-    //     assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
-    //     vm.stopPrank();
-    // }
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
+
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
+
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e6;
+        feeRequest.userRequest.bridgeRequest.inputToken = USDC;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = USDC;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e6;
 
 
-    // // CLAIM EARNED FEE TESTS ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
-    // function testClaimFeeUSDC() public {
-    //     deal(sender1, 100e18);
-    //     deal(address(USDC), sender1, 1000e6);
-    //     assertEq(sender1.balance, 100e18);
-    //     assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
+        vm.startPrank(sender1);
+        IERC20(USDC).approve(address(feeRouter),1000e6);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
 
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
+        assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
+        vm.stopPrank();
+    }
 
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
+    function testDeductFeeAndCallRegistryForEther() public {
+        deal(sender1, 101e18);
+        // deal(address(USDC), sender1, 1000e6);
+        assertEq(sender1.balance, 101e18);
+        // assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
 
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
 
-    //     feeRouter.registerFeeConfig(100, feeConfig);
-    //     vm.stopPrank();
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     FeeRouter.FeeRequest memory feeRequest;
-    //     feeRequest.integratorId = 100;
-    //     feeRequest.userRequest.receiverAddress = sender1;
-    //     feeRequest.userRequest.toChainId = 137;
-    //     feeRequest.userRequest.amount = 1000e6;
-    //     feeRequest.userRequest.bridgeRequest.inputToken = USDC;
-    //     feeRequest.userRequest.bridgeRequest.id = 2;
-    //     feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-    //     feeRequest.userRequest.middlewareRequest.inputToken = USDC;
-    //     feeRequest.userRequest.middlewareRequest.id = 0;
-    //     feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
 
-    //     vm.startPrank(sender1);
-    //     IERC20(USDC).approve(address(feeRouter),1000e6);
-    //     // vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
-    //     feeRouter.deductFeeAndCallRegistry(feeRequest);
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e17;
+        feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 100e18;
 
-    //     assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
-    //     vm.stopPrank();
 
-    //     deal(feeTaker2, 100e18);
-    //     vm.startPrank(feeTaker2);
+        vm.startPrank(sender1);
+        // IERC20(USDC).approve(address(feeRouter),1000e6);
+        feeRouter.deductFeeAndCallRegistry{value: 100e18}(feeRequest);
 
-    //     feeRouter.claimFee(100,address(USDC));
+        assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        vm.stopPrank();
+    }
 
-    //     // Assertions
-    //     assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
-    //     assertEq(3*1e5, IERC20(USDC).balanceOf(feeTaker1));
-    //     assertEq(7*1e5, IERC20(USDC).balanceOf(feeTaker2));
+    // CLAIM EARNED FEE TESTS ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+    function testClaimFeeUSDC() public {
+        deal(sender1, 100e18);
+        deal(address(USDC), sender1, 1000e6);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
 
-    //     assertEq(1e6, (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2)));
-    // }
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
 
-    // function testClaimFeeDAI() public {
-    //     deal(sender1, 100e18);
-    //     deal(address(DAI), sender1, 1000e18);
-    //     assertEq(sender1.balance, 100e18);
-    //     assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
 
-    //     vm.startPrank(owner);
-    //     // Create Config
-    //     FeeRouter.FeeConfig memory feeConfig;
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
 
-    //     // Create FeeSplit - 1
-    //     FeeRouter.FeeSplits memory feeSplit1;
-    //     feeSplit1.owner = feeTaker1;
-    //     feeSplit1.partOfTotalFeesInBps = part3;
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
 
-    //     // Create FeeSplit - 2
-    //     FeeRouter.FeeSplits memory feeSplit2;
-    //     feeSplit2.owner = feeTaker2;
-    //     feeSplit2.partOfTotalFeesInBps = part7;
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e6;
+        feeRequest.userRequest.bridgeRequest.inputToken = USDC;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = USDC;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e6;
 
-    //     // Set Fee Config
-    //     feeConfig.feeSplits[0] = feeSplit1;
-    //     feeConfig.feeSplits[1] = feeSplit2;
-    //     feeConfig.totalFeeInBps = totalFees10;
 
-    //     feeRouter.registerFeeConfig(100, feeConfig);
-    //     vm.stopPrank();
+        vm.startPrank(sender1);
+        IERC20(USDC).approve(address(feeRouter),1000e6);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
 
-    //     FeeRouter.FeeRequest memory feeRequest;
-    //     feeRequest.integratorId = 100;
-    //     feeRequest.userRequest.receiverAddress = sender1;
-    //     feeRequest.userRequest.toChainId = 137;
-    //     feeRequest.userRequest.amount = 1000e18;
-    //     feeRequest.userRequest.bridgeRequest.inputToken = DAI;
-    //     feeRequest.userRequest.bridgeRequest.id = 2;
-    //     feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-    //     feeRequest.userRequest.middlewareRequest.inputToken = DAI;
-    //     feeRequest.userRequest.middlewareRequest.id = 0;
-    //     feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
+        vm.stopPrank();
 
-    //     vm.startPrank(sender1);
-    //     IERC20(DAI).approve(address(feeRouter),1000e18);
-    //     // vm.expectRevert(abi.encodePacked("FeeConfig is not registered."));
-    //     feeRouter.deductFeeAndCallRegistry(feeRequest);
+        deal(feeTaker2, 100e18);
+        vm.startPrank(feeTaker2);
 
-    //     assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
-    //     vm.stopPrank();
+        feeRouter.claimFee(100,address(USDC));
 
-    //     deal(feeTaker2, 100e18);
-    //     vm.startPrank(feeTaker2);
+        // Assertions
+        assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(3*1e5, IERC20(USDC).balanceOf(feeTaker1));
+        assertEq(7*1e5, IERC20(USDC).balanceOf(feeTaker2));
 
-    //     feeRouter.claimFee(100, address(DAI));
+        assertEq(1e6, (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2)));
+    }
 
-    //     // Assertions
-    //     assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
-    //     assertEq(3*1e17, IERC20(DAI).balanceOf(feeTaker1));
-    //     assertEq(7*1e17, IERC20(DAI).balanceOf(feeTaker2));
+    function testClaimFeeDAI() public {
+        deal(sender1, 100e18);
+        deal(address(DAI), sender1, 1000e18);
+        assertEq(sender1.balance, 100e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
 
-    //     assertEq(1e18, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
-    // }
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
+
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
+
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e18;
+        feeRequest.userRequest.bridgeRequest.inputToken = DAI;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = DAI;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 1000e18;
+
+        vm.startPrank(sender1);
+        IERC20(DAI).approve(address(feeRouter),1000e18);
+        feeRouter.deductFeeAndCallRegistry(feeRequest);
+
+        assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        vm.stopPrank();
+
+        deal(feeTaker2, 100e18);
+        vm.startPrank(feeTaker2);
+
+        feeRouter.claimFee(100, address(DAI));
+
+        // Assertions
+        assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(3*1e17, IERC20(DAI).balanceOf(feeTaker1));
+        assertEq(7*1e17, IERC20(DAI).balanceOf(feeTaker2));
+
+        assertEq(1e18, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
+    }
+
+    function testClaimFeeEther() public {
+        deal(sender1, 101e18);
+        assertEq(sender1.balance, 101e18);
+
+        console.log(feeTaker1.balance);
+        console.log(feeTaker2.balance);
+
+        vm.startPrank(owner);
+        // Create Config
+        FeeRouter.FeeSplits memory feeSplit1;
+        feeSplit1.owner = feeTaker1;
+        feeSplit1.partOfTotalFeesInBps = part3;
+
+        // Create FeeSplit - 2
+        FeeRouter.FeeSplits memory feeSplit2;
+        feeSplit2.owner = feeTaker2;
+        feeSplit2.partOfTotalFeesInBps = part7;
+
+        // Set Fee Config
+        FeeRouter.FeeSplits[3] memory feeSplits;
+        feeSplits[0] = feeSplit1;
+        feeSplits[1] = feeSplit2;
+
+        feeRouter.registerFeeConfig(100, totalFees10, feeSplits);
+        vm.stopPrank();
+
+        // Polygon Bridge
+        FeeRouter.FeeRequest memory feeRequest;
+        feeRequest.integratorId = 100;
+        feeRequest.userRequest.receiverAddress = sender1;
+        feeRequest.userRequest.toChainId = 137;
+        feeRequest.userRequest.amount = 999e17;
+        feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.bridgeRequest.id = 2;
+        feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
+        feeRequest.userRequest.middlewareRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.middlewareRequest.id = 0;
+        feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
+        feeRequest.inputAmount = 100e18;
+
+
+        vm.startPrank(sender1);
+        feeRouter.deductFeeAndCallRegistry{value: 100e18}(feeRequest);
+
+        assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+
+        feeRouter.claimFee(100, address(NATIVE_TOKEN_ADDRESS));
+
+        // Assertions
+        assertEq(0, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(3*1e16, feeTaker1.balance);
+        assertEq(7*1e16, feeTaker2.balance);
+
+        assertEq(1e17, feeTaker1.balance + feeTaker2.balance);
+    }
 }

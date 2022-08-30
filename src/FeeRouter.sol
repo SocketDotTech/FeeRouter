@@ -2,7 +2,7 @@ pragma solidity ^0.8.4;
 
 import "./interfaces/ISocketRegistry.sol";
 import "./utils/Ownable.sol";
-// import "forge-std/console.sol";
+import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // import "forge-std/console.sol";
@@ -16,6 +16,7 @@ contract FeeRouter is Ownable {
     error IntegratorIdAlreadyRegistered();
     error TotalFeeAndPartsMismatch();
     error IntegratorIdNotRegistered();
+    error FeeMisMatch();
 
     uint16 immutable PRECISION = 10000;
 
@@ -142,7 +143,10 @@ contract FeeRouter is Ownable {
         }
     }
 
-    function deductFeeAndCallRegistry(FeeRequest calldata _feeRequest) public {
+    function deductFeeAndCallRegistry(FeeRequest calldata _feeRequest)
+        public
+        payable
+    {
         if (validIntegrators[_feeRequest.integratorId] != true)
             revert IntegratorIdNotRegistered();
 
@@ -166,6 +170,11 @@ contract FeeRouter is Ownable {
             _feeRequest.integratorId,
             _feeRequest.inputAmount
         );
+
+        console.log("registry amount", registryAmount, _feeRequest.inputAmount);
+
+        if (_feeRequest.userRequest.amount != registryAmount)
+            revert FeeMisMatch();
 
         // Update the earned fee for the token and integrator.
         _updateEarnedFee(
