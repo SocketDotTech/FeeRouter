@@ -52,7 +52,7 @@ contract FeeRouter is Ownable {
         uint16 integratorId,
         address tokenAddress,
         uint256 amount,
-        address owner
+        address feeTaker
     );
     event BridgeSocket(
         uint16 integratorId,
@@ -65,12 +65,12 @@ contract FeeRouter is Ownable {
     );
     struct FeeRequest {
         uint16 integratorId;
-        ISocketRegistry.UserRequest userRequest;
         uint256 inputAmount;
+        ISocketRegistry.UserRequest userRequest;
     }
 
     struct FeeSplits {
-        address owner;
+        address feeTaker;
         uint16 partOfTotalFeesInBps;
     }
 
@@ -121,7 +121,6 @@ contract FeeRouter is Ownable {
         feeSplitMapping[integratorId][0] = feeSplits[0];
         feeSplitMapping[integratorId][1] = feeSplits[1];
         feeSplitMapping[integratorId][2] = feeSplits[2];
-        validIntegrators[integratorId] = true;
         _emitUpdateFee(integratorId, totalFeeInBps, feeSplits);
     }
 
@@ -137,13 +136,13 @@ contract FeeRouter is Ownable {
                 earnedFee,
                 integratorFeeSplits[i].partOfTotalFeesInBps,
                 totalFeeMapping[integratorId],
-                integratorFeeSplits[i].owner,
+                integratorFeeSplits[i].feeTaker,
                 tokenAddress
             );
         }
     }
 
-    function deductFeeAndCallRegistry(FeeRequest calldata _feeRequest)
+    function callRegistry(FeeRequest calldata _feeRequest)
         public
         payable
     {
@@ -166,12 +165,12 @@ contract FeeRouter is Ownable {
         }
 
         // Calculate Amount to Send to Registry.
-        uint256 registryAmount = _getAmountForRegistry(
+        uint256 amountToBridge = _getAmountForRegistry(
             _feeRequest.integratorId,
             _feeRequest.inputAmount
         );
 
-        if (_feeRequest.userRequest.amount != registryAmount)
+        if (_feeRequest.userRequest.amount != amountToBridge)
             revert FeeMisMatch();
 
         // Update the earned fee for the token and integrator.
@@ -179,18 +178,18 @@ contract FeeRouter is Ownable {
             _feeRequest.integratorId,
             inputTokenAddress,
             _feeRequest.inputAmount,
-            registryAmount
+            amountToBridge
         );
 
         // Call Registry
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
             socket.outboundTransferTo{
-                value: msg.value - (_feeRequest.inputAmount - registryAmount)
+                value: msg.value - (_feeRequest.inputAmount - amountToBridge)
             }(_feeRequest.userRequest);
         } else {
             IERC20(inputTokenAddress).safeApprove(
                 approvalAddress,
-                registryAmount
+                amountToBridge
             );
             socket.outboundTransferTo{value: msg.value}(
                 _feeRequest.userRequest
@@ -198,7 +197,7 @@ contract FeeRouter is Ownable {
         }
 
         // Emit Bridge Event
-        _emitBridgeSocket(_feeRequest, inputTokenAddress, registryAmount);
+        _emitBridgeSocket(_feeRequest, inputTokenAddress, amountToBridge);
     }
 
     // INTERNAL UTILITY FUNCTION ------------------------------------------------------------------------------------------------------>
@@ -207,17 +206,17 @@ contract FeeRouter is Ownable {
         uint256 earnedFee,
         uint16 part,
         uint16 total,
-        address owner,
+        address feeTaker,
         address tokenAddress
     ) internal {
-        if (owner != address(0)) {
+        if (feeTaker != address(0)) {
             uint256 amountToBeSent = (earnedFee * part) / total;
-            emit ClaimFee(integratorId, tokenAddress, amountToBeSent, owner);
+            emit ClaimFee(integratorId, tokenAddress, amountToBeSent, feeTaker);
             if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
-                payable(owner).transfer(amountToBeSent);
+                payable(feeTaker).transfer(amountToBeSent);
                 return;
             }
-            IERC20(tokenAddress).safeTransfer(owner, amountToBeSent);
+            IERC20(tokenAddress).safeTransfer(feeTaker, amountToBeSent);
         }
     }
 
@@ -302,9 +301,9 @@ contract FeeRouter is Ownable {
             feeSplits[0].partOfTotalFeesInBps,
             feeSplits[1].partOfTotalFeesInBps,
             feeSplits[2].partOfTotalFeesInBps,
-            feeSplits[0].owner,
-            feeSplits[1].owner,
-            feeSplits[2].owner
+            feeSplits[0].feeTaker,
+            feeSplits[1].feeTaker,
+            feeSplits[2].feeTaker
         );
     }
 
@@ -319,9 +318,9 @@ contract FeeRouter is Ownable {
             feeSplits[0].partOfTotalFeesInBps,
             feeSplits[1].partOfTotalFeesInBps,
             feeSplits[2].partOfTotalFeesInBps,
-            feeSplits[0].owner,
-            feeSplits[1].owner,
-            feeSplits[2].owner
+            feeSplits[0].feeTaker,
+            feeSplits[1].feeTaker,
+            feeSplits[2].feeTaker
         );
     }
 

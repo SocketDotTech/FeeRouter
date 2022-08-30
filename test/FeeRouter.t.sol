@@ -36,7 +36,7 @@ contract FeeRouterTest is Test {
         uint16 integratorId,
         address tokenAddress,
         uint256 amount,
-        address owner
+        address feeTaker
     );
     event BridgeSocket(
         uint16 integratorId,
@@ -88,7 +88,7 @@ contract FeeRouterTest is Test {
 
         uint16 totalFeeInBps = 0;
         FeeRouter.FeeSplits[3] memory feeSplits;
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFeeInBps, feeSplits);
         vm.stopPrank();
     }
@@ -98,7 +98,7 @@ contract FeeRouterTest is Test {
         vm.startPrank(feeTaker1);
 
         FeeRouter.FeeSplits[3] memory feeSplits;
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         vm.expectRevert(Ownable.OnlyOwner.selector);
         feeRouter.registerFeeConfig(1, totalFees10, feeSplits);
         vm.stopPrank();
@@ -110,12 +110,12 @@ contract FeeRouterTest is Test {
 
         // Create FeeSplit - 1
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = owner;
+        feeSplit1.feeTaker = owner;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = owner;
+        feeSplit2.feeTaker = owner;
         feeSplit2.partOfTotalFeesInBps = part4;
 
         FeeRouter.FeeSplits[3] memory feeSplits;
@@ -140,12 +140,12 @@ contract FeeRouterTest is Test {
 
         // Create FeeSplit - 1
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -163,9 +163,9 @@ contract FeeRouterTest is Test {
 
         // Assertions.
         assertEq(totalFees10, registeredTotalFees);
-        assertEq(feeTaker1, registerFeeSplits[0].owner);
-        assertEq(feeTaker2, registerFeeSplits[1].owner);
-        assertEq(address(0), registerFeeSplits[2].owner);
+        assertEq(feeTaker1, registerFeeSplits[0].feeTaker);
+        assertEq(feeTaker2, registerFeeSplits[1].feeTaker);
+        assertEq(address(0), registerFeeSplits[2].feeTaker);
         assertEq(part3, registerFeeSplits[0].partOfTotalFeesInBps);
         assertEq(part7, registerFeeSplits[1].partOfTotalFeesInBps);
         assertEq(0, registerFeeSplits[2].partOfTotalFeesInBps);
@@ -179,7 +179,7 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         FeeRouter.FeeSplits[3] memory feeSplits;
 
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
 
         vm.expectRevert(
@@ -196,7 +196,7 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         FeeRouter.FeeSplits[3] memory feeSplits;
 
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
 
         feeRouter.updateFeeConfig(1, totalFees0, feeSplits);
@@ -208,7 +208,7 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         FeeRouter.FeeSplits[3] memory feeSplits;
 
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
         vm.stopPrank();
 
@@ -223,7 +223,7 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         FeeRouter.FeeSplits[3] memory feeSplits;
 
-        feeSplits[0].owner = feeTaker1;
+        feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
 
         vm.expectRevert(FeeRouter.IntegratorIdNotRegistered.selector);
@@ -237,12 +237,12 @@ contract FeeRouterTest is Test {
 
         // Create FeeSplit - 1
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -267,8 +267,8 @@ contract FeeRouterTest is Test {
 
         // Assertions.
         assertEq(totalFees100, registeredTotalFees);
-        assertEq(feeTaker1, registerFeeSplits[0].owner);
-        assertEq(feeTaker2, registerFeeSplits[1].owner);
+        assertEq(feeTaker1, registerFeeSplits[0].feeTaker);
+        assertEq(feeTaker2, registerFeeSplits[1].feeTaker);
         assertEq(part30, registerFeeSplits[0].partOfTotalFeesInBps);
         assertEq(part70, registerFeeSplits[1].partOfTotalFeesInBps);
 
@@ -281,12 +281,12 @@ contract FeeRouterTest is Test {
 
         // Create FeeSplit - 1
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -330,7 +330,7 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         vm.expectRevert(FeeRouter.IntegratorIdNotRegistered.selector);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
         vm.stopPrank();
     }
 
@@ -344,12 +344,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -377,14 +377,14 @@ contract FeeRouterTest is Test {
         vm.startPrank(sender1);
         IERC20(DAI).approve(address(feeRouter),1000e18);
         vm.expectRevert(FeeRouter.FeeMisMatch.selector);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
 
         // assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
     }
 
     // Deduction of Fee should be accurate. 
-    function testDeductFeeAndCallRegistryForDAI() public {
+    function testcallRegistryForDAI() public {
         deal(sender1, 100e18);
         deal(address(DAI), sender1, 1000e18);
         assertEq(sender1.balance, 100e18);
@@ -393,12 +393,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -425,13 +425,13 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         IERC20(DAI).approve(address(feeRouter),1000e18);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
 
         assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
     }
 
-    function testDeductFeeAndCallRegistryForUSDC() public {
+    function testcallRegistryForUSDC() public {
         deal(sender1, 100e18);
         deal(address(USDC), sender1, 1000e6);
         assertEq(sender1.balance, 100e18);
@@ -440,12 +440,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -473,13 +473,13 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         IERC20(USDC).approve(address(feeRouter),1000e6);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
 
         assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
         vm.stopPrank();
     }
 
-    function testDeductFeeAndCallRegistryForEther() public {
+    function testcallRegistryForEther() public {
         deal(sender1, 101e18);
         // deal(address(USDC), sender1, 1000e6);
         assertEq(sender1.balance, 101e18);
@@ -488,12 +488,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -521,7 +521,7 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         // IERC20(USDC).approve(address(feeRouter),1000e6);
-        feeRouter.deductFeeAndCallRegistry{value: 100e18}(feeRequest);
+        feeRouter.callRegistry{value: 100e18}(feeRequest);
 
         assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
         vm.stopPrank();
@@ -537,12 +537,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -570,7 +570,7 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         IERC20(USDC).approve(address(feeRouter),1000e6);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
 
         assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
         vm.stopPrank();
@@ -597,12 +597,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -629,7 +629,7 @@ contract FeeRouterTest is Test {
 
         vm.startPrank(sender1);
         IERC20(DAI).approve(address(feeRouter),1000e18);
-        feeRouter.deductFeeAndCallRegistry(feeRequest);
+        feeRouter.callRegistry(feeRequest);
 
         assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
@@ -657,12 +657,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(owner);
         // Create Config
         FeeRouter.FeeSplits memory feeSplit1;
-        feeSplit1.owner = feeTaker1;
+        feeSplit1.feeTaker = feeTaker1;
         feeSplit1.partOfTotalFeesInBps = part3;
 
         // Create FeeSplit - 2
         FeeRouter.FeeSplits memory feeSplit2;
-        feeSplit2.owner = feeTaker2;
+        feeSplit2.feeTaker = feeTaker2;
         feeSplit2.partOfTotalFeesInBps = part7;
 
         // Set Fee Config
@@ -689,7 +689,7 @@ contract FeeRouterTest is Test {
 
 
         vm.startPrank(sender1);
-        feeRouter.deductFeeAndCallRegistry{value: 100e18}(feeRequest);
+        feeRouter.callRegistry{value: 100e18}(feeRequest);
 
         assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
 
