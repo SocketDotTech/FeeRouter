@@ -75,8 +75,8 @@ contract FeeRouter is Ownable {
     }
 
     mapping(uint16 => bool) validIntegrators;
-    mapping(uint16 => uint16) totalFeeMapping;
-    mapping(uint16 => FeeSplits[3]) feeSplitMapping;
+    mapping(uint16 => uint16) totalFeeMap;
+    mapping(uint16 => FeeSplits[3]) feeSplitMap;
     mapping(uint16 => mapping(address => uint256)) earnedTokenFeeMap;
 
     // CORE FUNCTIONS ------------------------------------------------------------------------------------------------------>
@@ -95,10 +95,10 @@ contract FeeRouter is Ownable {
 
         if (x != totalFeeInBps) revert TotalFeeAndPartsMismatch();
 
-        totalFeeMapping[integratorId] = totalFeeInBps;
-        feeSplitMapping[integratorId][0] = feeSplits[0];
-        feeSplitMapping[integratorId][1] = feeSplits[1];
-        feeSplitMapping[integratorId][2] = feeSplits[2];
+        totalFeeMap[integratorId] = totalFeeInBps;
+        feeSplitMap[integratorId][0] = feeSplits[0];
+        feeSplitMap[integratorId][1] = feeSplits[1];
+        feeSplitMap[integratorId][2] = feeSplits[2];
         validIntegrators[integratorId] = true;
         _emitRegisterFee(integratorId, totalFeeInBps, feeSplits);
     }
@@ -117,16 +117,16 @@ contract FeeRouter is Ownable {
 
         if (x != totalFeeInBps) revert TotalFeeAndPartsMismatch();
 
-        totalFeeMapping[integratorId] = totalFeeInBps;
-        feeSplitMapping[integratorId][0] = feeSplits[0];
-        feeSplitMapping[integratorId][1] = feeSplits[1];
-        feeSplitMapping[integratorId][2] = feeSplits[2];
+        totalFeeMap[integratorId] = totalFeeInBps;
+        feeSplitMap[integratorId][0] = feeSplits[0];
+        feeSplitMap[integratorId][1] = feeSplits[1];
+        feeSplitMap[integratorId][2] = feeSplits[2];
         _emitUpdateFee(integratorId, totalFeeInBps, feeSplits);
     }
 
     function claimFee(uint16 integratorId, address tokenAddress) public {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
-        FeeSplits[3] memory integratorFeeSplits = feeSplitMapping[integratorId];
+        FeeSplits[3] memory integratorFeeSplits = feeSplitMap[integratorId];
         earnedTokenFeeMap[integratorId][tokenAddress] = 0;
 
         if (earnedFee == 0) return;
@@ -135,7 +135,7 @@ contract FeeRouter is Ownable {
                 integratorId,
                 earnedFee,
                 integratorFeeSplits[i].partOfTotalFeesInBps,
-                totalFeeMapping[integratorId],
+                totalFeeMap[integratorId],
                 integratorFeeSplits[i].feeTaker,
                 tokenAddress
             );
@@ -259,7 +259,7 @@ contract FeeRouter is Ownable {
         view
         returns (uint256)
     {
-        return amount - ((amount * totalFeeMapping[integratorId]) / PRECISION);
+        return amount - ((amount * totalFeeMap[integratorId]) / PRECISION);
     }
 
     function _updateEarnedFee(
@@ -346,7 +346,7 @@ contract FeeRouter is Ownable {
         view
         returns (uint16)
     {
-        return totalFeeMapping[integratorId];
+        return totalFeeMap[integratorId];
     }
 
     function getFeeSplits(uint16 integratorId)
@@ -354,7 +354,7 @@ contract FeeRouter is Ownable {
         view
         returns (FeeSplits[3] memory feeSplits)
     {
-        return feeSplitMapping[integratorId];
+        return feeSplitMap[integratorId];
     }
 
     // RESCUE FUNCTIONS ------------------------------------------------------------------------------------------------------>
