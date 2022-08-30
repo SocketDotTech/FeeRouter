@@ -75,8 +75,8 @@ contract FeeRouter is Ownable {
     }
 
     mapping(uint16 => bool) validIntegrators;
-    mapping(uint16 => uint16) public totalFeeMapping;
-    mapping(uint16 => FeeSplits[3]) public feeSplitMapping;
+    mapping(uint16 => uint16) totalFeeMapping;
+    mapping(uint16 => FeeSplits[3]) feeSplitMapping;
     mapping(uint16 => mapping(address => uint256)) earnedTokenFeeMap;
 
     // CORE FUNCTIONS ------------------------------------------------------------------------------------------------------>
@@ -171,8 +171,6 @@ contract FeeRouter is Ownable {
             _feeRequest.inputAmount
         );
 
-        console.log("registry amount", registryAmount, _feeRequest.inputAmount);
-
         if (_feeRequest.userRequest.amount != registryAmount)
             revert FeeMisMatch();
 
@@ -186,15 +184,17 @@ contract FeeRouter is Ownable {
 
         // Call Registry
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
-            socket.outboundTransferTo{value: registryAmount}(
-                _feeRequest.userRequest
-            );
+            socket.outboundTransferTo{
+                value: msg.value - (_feeRequest.inputAmount - registryAmount)
+            }(_feeRequest.userRequest);
         } else {
             IERC20(inputTokenAddress).safeApprove(
                 approvalAddress,
                 registryAmount
             );
-            socket.outboundTransferTo(_feeRequest.userRequest);
+            socket.outboundTransferTo{value: msg.value}(
+                _feeRequest.userRequest
+            );
         }
 
         // Emit Bridge Event
@@ -212,12 +212,12 @@ contract FeeRouter is Ownable {
     ) internal {
         if (owner != address(0)) {
             uint256 amountToBeSent = (earnedFee * part) / total;
+            emit ClaimFee(integratorId, tokenAddress, amountToBeSent, owner);
             if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
                 payable(owner).transfer(amountToBeSent);
                 return;
             }
             IERC20(tokenAddress).safeTransfer(owner, amountToBeSent);
-            emit ClaimFee(integratorId, tokenAddress, amountToBeSent, owner);
         }
     }
 
