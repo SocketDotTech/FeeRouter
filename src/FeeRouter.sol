@@ -84,7 +84,7 @@ contract FeeRouter is Ownable {
         uint16 integratorId,
         uint16 totalFeeInBps,
         FeeSplits[3] calldata feeSplits
-    ) public onlyOwner {
+    ) external onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
         if (validIntegrators[integratorId] != false)
             revert IntegratorIdAlreadyRegistered();
@@ -107,7 +107,7 @@ contract FeeRouter is Ownable {
         uint16 integratorId,
         uint16 totalFeeInBps,
         FeeSplits[3] calldata feeSplits
-    ) public onlyOwner {
+    ) external onlyOwner {
         if (validIntegrators[integratorId] != true)
             revert IntegratorIdNotRegistered();
 
@@ -124,7 +124,7 @@ contract FeeRouter is Ownable {
         _emitUpdateFee(integratorId, totalFeeInBps, feeSplits);
     }
 
-    function claimFee(uint16 integratorId, address tokenAddress) public {
+    function claimFee(uint16 integratorId, address tokenAddress) external {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
         FeeSplits[3] memory integratorFeeSplits = feeSplitMap[integratorId];
         earnedTokenFeeMap[integratorId][tokenAddress] = 0;
@@ -143,7 +143,7 @@ contract FeeRouter is Ownable {
     }
 
     function callRegistry(FeeRequest calldata _feeRequest)
-        public
+        external
         payable
     {
         if (validIntegrators[_feeRequest.integratorId] != true)
@@ -174,12 +174,14 @@ contract FeeRouter is Ownable {
             revert FeeMisMatch();
 
         // Update the earned fee for the token and integrator.
+        uint256 x = gasleft();
         _updateEarnedFee(
             _feeRequest.integratorId,
             inputTokenAddress,
             _feeRequest.inputAmount,
             amountToBridge
         );
+        console.log(x - gasleft());
 
         // Call Registry
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
