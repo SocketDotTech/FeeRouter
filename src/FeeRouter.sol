@@ -9,7 +9,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract FeeRouter is Ownable {
     using SafeERC20 for IERC20;
-    address private constant NATIVE_TOKEN_ADDRESS =
+    address private immutable NATIVE_TOKEN_ADDRESS =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     ISocketRegistry public immutable socket;
 
