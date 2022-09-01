@@ -9,8 +9,8 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract FeeRouter is Ownable {
     using SafeERC20 for IERC20;
-    address private immutable NATIVE_TOKEN_ADDRESS =
-        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address private constant NATIVE_TOKEN_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ISocketRegistry public immutable socket;
 
     error IntegratorIdAlreadyRegistered();
@@ -146,7 +146,10 @@ contract FeeRouter is Ownable {
             revert IntegratorIdNotRegistered();
 
         // Get approval and token addresses.
-        (address approvalAddress, address inputTokenAddress) = _getApprovalAndInputTokenAddress(_feeRequest.userRequest);
+        (
+            address approvalAddress,
+            address inputTokenAddress
+        ) = _getApprovalAndInputTokenAddress(_feeRequest.userRequest);
 
         // Get amount to the contract if ERC20
         if (inputTokenAddress != NATIVE_TOKEN_ADDRESS) {
