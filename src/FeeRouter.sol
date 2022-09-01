@@ -86,7 +86,7 @@ contract FeeRouter is Ownable {
         FeeSplits[3] calldata feeSplits
     ) external onlyOwner {
         // Not checking for total fee in bps to be 0 as the total fee can be set to 0.
-        if (validIntegrators[integratorId] != false)
+        if (validIntegrators[integratorId])
             revert IntegratorIdAlreadyRegistered();
 
         uint16 x = feeSplits[0].partOfTotalFeesInBps +
@@ -108,7 +108,7 @@ contract FeeRouter is Ownable {
         uint16 totalFeeInBps,
         FeeSplits[3] calldata feeSplits
     ) external onlyOwner {
-        if (validIntegrators[integratorId] != true)
+        if (!validIntegrators[integratorId])
             revert IntegratorIdNotRegistered();
 
         uint16 x = feeSplits[0].partOfTotalFeesInBps +
@@ -146,7 +146,7 @@ contract FeeRouter is Ownable {
         external
         payable
     {
-        if (validIntegrators[_feeRequest.integratorId] != true)
+        if (!validIntegrators[_feeRequest.integratorId])
             revert IntegratorIdNotRegistered();
 
         // Get approval and token addresses.
