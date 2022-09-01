@@ -108,8 +108,7 @@ contract FeeRouter is Ownable {
         uint16 totalFeeInBps,
         FeeSplits[3] calldata feeSplits
     ) external onlyOwner {
-        if (!validIntegrators[integratorId])
-            revert IntegratorIdNotRegistered();
+        if (!validIntegrators[integratorId]) revert IntegratorIdNotRegistered();
 
         uint16 x = feeSplits[0].partOfTotalFeesInBps +
             feeSplits[1].partOfTotalFeesInBps +
@@ -142,18 +141,12 @@ contract FeeRouter is Ownable {
         }
     }
 
-    function callRegistry(FeeRequest calldata _feeRequest)
-        external
-        payable
-    {
+    function callRegistry(FeeRequest calldata _feeRequest) external payable {
         if (!validIntegrators[_feeRequest.integratorId])
             revert IntegratorIdNotRegistered();
 
         // Get approval and token addresses.
-        address inputTokenAddress = _getInputTokenAddress(
-            _feeRequest.userRequest
-        );
-        address approvalAddress = _getApprovalAddress(_feeRequest.userRequest);
+        (address approvalAddress, address inputTokenAddress) = _getApprovalAndInputTokenAddress(_feeRequest.userRequest);
 
         // Get amount to the contract if ERC20
         if (inputTokenAddress != NATIVE_TOKEN_ADDRESS) {
@@ -174,14 +167,12 @@ contract FeeRouter is Ownable {
             revert FeeMisMatch();
 
         // Update the earned fee for the token and integrator.
-        uint256 x = gasleft();
         _updateEarnedFee(
             _feeRequest.integratorId,
             inputTokenAddress,
             _feeRequest.inputAmount,
             amountToBridge
         );
-        console.log(x - gasleft());
 
         // Call Registry
         if (inputTokenAddress == NATIVE_TOKEN_ADDRESS) {
@@ -222,29 +213,19 @@ contract FeeRouter is Ownable {
         }
     }
 
-    function _getApprovalAddress(
+    function _getApprovalAndInputTokenAddress(
         ISocketRegistry.UserRequest calldata userRequest
-    ) internal view returns (address) {
+    ) internal view returns (address, address) {
         if (userRequest.middlewareRequest.id == 0) {
             (address routeAddress, , ) = socket.routes(
                 userRequest.bridgeRequest.id
             );
-            return routeAddress;
+            return (routeAddress, userRequest.bridgeRequest.inputToken);
         } else {
             (address routeAddress, , ) = socket.routes(
                 userRequest.middlewareRequest.id
             );
-            return routeAddress;
-        }
-    }
-
-    function _getInputTokenAddress(
-        ISocketRegistry.UserRequest calldata userRequest
-    ) internal pure returns (address) {
-        if (userRequest.middlewareRequest.id == 0) {
-            return userRequest.bridgeRequest.inputToken;
-        } else {
-            return userRequest.middlewareRequest.inputToken;
+            return (routeAddress, userRequest.middlewareRequest.inputToken);
         }
     }
 
