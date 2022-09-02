@@ -7,12 +7,14 @@ abstract contract ISocketRegistry {
         address inputToken;
         bytes data;
     }
+
     struct MiddlewareRequest {
         uint256 id;
         uint256 optionalNativeAmount;
         address inputToken;
         bytes data;
     }
+
     struct UserRequest {
         address receiverAddress;
         uint256 toChainId;
@@ -26,10 +28,11 @@ abstract contract ISocketRegistry {
         bool isEnabled;
         bool isMiddleware;
     }
+
     RouteData[] public routes;
 
     function outboundTransferTo(UserRequest calldata _userRequest)
-        virtual
         external
-        payable;
+        payable
+        virtual;
 }
