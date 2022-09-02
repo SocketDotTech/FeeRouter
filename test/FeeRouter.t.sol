@@ -47,6 +47,7 @@ contract FeeRouterTest is Test {
         uint256 bridgeId,
         uint256 totalFee
     );
+
     FeeRouter public feeRouter;
     ISocketRegistry public socketRegistry;
 
@@ -75,9 +76,8 @@ contract FeeRouterTest is Test {
             0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0,
             owner
         );
-        socketRegistry = ISocketRegistry(
-            0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0
-        );
+        socketRegistry =
+            ISocketRegistry(0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0);
     }
 
     // REGISTER  FEE TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
@@ -125,9 +125,7 @@ contract FeeRouterTest is Test {
         // console.log(feeSplits.length);
 
         // Create FeeConfig - Should Revert
-        vm.expectRevert(
-            FeeRouter.TotalFeeAndPartsMismatch.selector
-        );
+        vm.expectRevert(FeeRouter.TotalFeeAndPartsMismatch.selector);
         feeRouter.registerFeeConfig(3, totalFees10, feeSplits);
 
         vm.stopPrank();
@@ -155,10 +153,20 @@ contract FeeRouterTest is Test {
 
         // Expect Event Emit
         vm.expectEmit(false, false, false, true);
-        emit RegisterFee(integratorId, totalFees10, part3, part7, 0, feeTaker1, feeTaker2, address(0));
+        emit RegisterFee(
+            integratorId,
+            totalFees10,
+            part3,
+            part7,
+            0,
+            feeTaker1,
+            feeTaker2,
+            address(0)
+            );
         feeRouter.registerFeeConfig(integratorId, totalFees10, feeSplits);
 
-        FeeRouter.FeeSplits[3] memory registerFeeSplits = feeRouter.getFeeSplits(integratorId);
+        FeeRouter.FeeSplits[3] memory registerFeeSplits =
+            feeRouter.getFeeSplits(integratorId);
         uint16 registeredTotalFees = feeRouter.getTotalFeeInBps(integratorId);
 
         // Assertions.
@@ -169,7 +177,6 @@ contract FeeRouterTest is Test {
         assertEq(part3, registerFeeSplits[0].partOfTotalFeesInBps);
         assertEq(part7, registerFeeSplits[1].partOfTotalFeesInBps);
         assertEq(0, registerFeeSplits[2].partOfTotalFeesInBps);
-        
 
         vm.stopPrank();
     }
@@ -182,9 +189,7 @@ contract FeeRouterTest is Test {
         feeSplits[0].feeTaker = feeTaker1;
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
 
-        vm.expectRevert(
-            FeeRouter.IntegratorIdAlreadyRegistered.selector
-        );
+        vm.expectRevert(FeeRouter.IntegratorIdAlreadyRegistered.selector);
         feeRouter.registerFeeConfig(1, totalFees0, feeSplits);
         vm.stopPrank();
     }
@@ -259,10 +264,20 @@ contract FeeRouterTest is Test {
 
         // Emits Event
         vm.expectEmit(false, false, false, true);
-        emit UpdateFee(integratorId, totalFees100, part30, part70, 0, feeTaker1, feeTaker2, address(0));
+        emit UpdateFee(
+            integratorId,
+            totalFees100,
+            part30,
+            part70,
+            0,
+            feeTaker1,
+            feeTaker2,
+            address(0)
+            );
         feeRouter.updateFeeConfig(integratorId, totalFees100, feeSplits);
 
-        FeeRouter.FeeSplits[3] memory registerFeeSplits = feeRouter.getFeeSplits(integratorId);
+        FeeRouter.FeeSplits[3] memory registerFeeSplits =
+            feeRouter.getFeeSplits(integratorId);
         uint16 registeredTotalFees = feeRouter.getTotalFeeInBps(integratorId);
 
         // Assertions.
@@ -307,7 +322,7 @@ contract FeeRouterTest is Test {
     }
 
     // FEE DEDUCTION TESTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
-    
+
     // Unregistered Integrator Ids should be reverted.
     function testDeductionOfFeeWithUnregisteredIntegratorId() public {
         deal(sender1, 100e18);
@@ -334,7 +349,7 @@ contract FeeRouterTest is Test {
         vm.stopPrank();
     }
 
-    // Deduction of Fee should be accurate. 
+    // Deduction of Fee should be accurate.
     function testRevertFeeMismatch() public {
         deal(sender1, 100e18);
         deal(address(DAI), sender1, 1000e18);
@@ -375,7 +390,7 @@ contract FeeRouterTest is Test {
         feeRequest.inputAmount = 1000e18;
 
         vm.startPrank(sender1);
-        IERC20(DAI).approve(address(feeRouter),1000e18);
+        IERC20(DAI).approve(address(feeRouter), 1000e18);
         vm.expectRevert(FeeRouter.FeeMisMatch.selector);
         feeRouter.callRegistry(feeRequest);
 
@@ -383,7 +398,7 @@ contract FeeRouterTest is Test {
         vm.stopPrank();
     }
 
-    // Deduction of Fee should be accurate. 
+    // Deduction of Fee should be accurate.
     function testcallRegistryForDAI() public {
         deal(sender1, 100e18);
         deal(address(DAI), sender1, 1000e18);
@@ -424,10 +439,10 @@ contract FeeRouterTest is Test {
         feeRequest.inputAmount = 1000e18;
 
         vm.startPrank(sender1);
-        IERC20(DAI).approve(address(feeRouter),1000e18);
+        IERC20(DAI).approve(address(feeRouter), 1000e18);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(1e18, feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
     }
 
@@ -470,12 +485,11 @@ contract FeeRouterTest is Test {
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
         feeRequest.inputAmount = 1000e6;
 
-
         vm.startPrank(sender1);
-        IERC20(USDC).approve(address(feeRouter),1000e6);
+        IERC20(USDC).approve(address(feeRouter), 1000e6);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(1e6, feeRouter.getEarnedFee(address(USDC), 100));
         vm.stopPrank();
     }
 
@@ -513,17 +527,17 @@ contract FeeRouterTest is Test {
         feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-        feeRequest.userRequest.middlewareRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.middlewareRequest.inputToken =
+            NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.middlewareRequest.id = 0;
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
         feeRequest.inputAmount = 100e18;
-
 
         vm.startPrank(sender1);
         // IERC20(USDC).approve(address(feeRouter),1000e6);
         feeRouter.callRegistry{value: 100e18}(feeRequest);
 
-        assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(1e17, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
         vm.stopPrank();
     }
 
@@ -567,25 +581,27 @@ contract FeeRouterTest is Test {
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
         feeRequest.inputAmount = 1000e6;
 
-
         vm.startPrank(sender1);
-        IERC20(USDC).approve(address(feeRouter),1000e6);
+        IERC20(USDC).approve(address(feeRouter), 1000e6);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e6,feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(1e6, feeRouter.getEarnedFee(address(USDC), 100));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
         vm.startPrank(feeTaker2);
 
-        feeRouter.claimFee(100,address(USDC));
+        feeRouter.claimFee(100, address(USDC));
 
         // Assertions
         assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
-        assertEq(3*1e5, IERC20(USDC).balanceOf(feeTaker1));
-        assertEq(7*1e5, IERC20(USDC).balanceOf(feeTaker2));
+        assertEq(3 * 1e5, IERC20(USDC).balanceOf(feeTaker1));
+        assertEq(7 * 1e5, IERC20(USDC).balanceOf(feeTaker2));
 
-        assertEq(1e6, (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2)));
+        assertEq(
+            1e6,
+            (IERC20(USDC).balanceOf(feeTaker1) + IERC20(USDC).balanceOf(feeTaker2))
+        );
     }
 
     function testClaimFeeDAI() public {
@@ -628,10 +644,10 @@ contract FeeRouterTest is Test {
         feeRequest.inputAmount = 1000e18;
 
         vm.startPrank(sender1);
-        IERC20(DAI).approve(address(feeRouter),1000e18);
+        IERC20(DAI).approve(address(feeRouter), 1000e18);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(1e18, feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
@@ -641,10 +657,13 @@ contract FeeRouterTest is Test {
 
         // Assertions
         assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
-        assertEq(3*1e17, IERC20(DAI).balanceOf(feeTaker1));
-        assertEq(7*1e17, IERC20(DAI).balanceOf(feeTaker2));
+        assertEq(3 * 1e17, IERC20(DAI).balanceOf(feeTaker1));
+        assertEq(7 * 1e17, IERC20(DAI).balanceOf(feeTaker2));
 
-        assertEq(1e18, (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2)));
+        assertEq(
+            1e18,
+            (IERC20(DAI).balanceOf(feeTaker1) + IERC20(DAI).balanceOf(feeTaker2))
+        );
     }
 
     function testClaimFeeEther() public {
@@ -682,23 +701,23 @@ contract FeeRouterTest is Test {
         feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
-        feeRequest.userRequest.middlewareRequest.inputToken = NATIVE_TOKEN_ADDRESS;
+        feeRequest.userRequest.middlewareRequest.inputToken =
+            NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.middlewareRequest.id = 0;
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
         feeRequest.inputAmount = 100e18;
 
-
         vm.startPrank(sender1);
         feeRouter.callRegistry{value: 100e18}(feeRequest);
 
-        assertEq(1e17,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(1e17, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
 
         feeRouter.claimFee(100, address(NATIVE_TOKEN_ADDRESS));
 
         // Assertions
         assertEq(0, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
-        assertEq(3*1e16, feeTaker1.balance);
-        assertEq(7*1e16, feeTaker2.balance);
+        assertEq(3 * 1e16, feeTaker1.balance);
+        assertEq(7 * 1e16, feeTaker2.balance);
 
         assertEq(1e17, feeTaker1.balance + feeTaker2.balance);
     }
