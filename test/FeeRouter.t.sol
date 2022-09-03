@@ -394,7 +394,6 @@ contract FeeRouterTest is Test {
         vm.expectRevert(FeeRouter.FeeMisMatch.selector);
         feeRouter.callRegistry(feeRequest);
 
-        // assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
     }
 
@@ -444,7 +443,7 @@ contract FeeRouterTest is Test {
         IERC20(DAI).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(DAI)));
         vm.stopPrank();
     }
 
@@ -493,7 +492,7 @@ contract FeeRouterTest is Test {
         IERC20(USDC).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(USDC)));
         vm.stopPrank();
     }
 
@@ -543,7 +542,7 @@ contract FeeRouterTest is Test {
         // IERC20(USDC).approve(address(feeRouter),1000e6);
         feeRouter.callRegistry{value: amount}(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
         vm.stopPrank();
     }
 
@@ -591,7 +590,7 @@ contract FeeRouterTest is Test {
         IERC20(USDC).approve(address(feeRouter), 1000e6);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e6, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(1e6, feeRouter.getEarnedFee(100, address(USDC)));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
@@ -600,7 +599,7 @@ contract FeeRouterTest is Test {
         feeRouter.claimFee(100, address(USDC));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(0, feeRouter.getEarnedFee(100, address(USDC)));
         assertEq(3 * 1e5, IERC20(USDC).balanceOf(feeTaker1));
         assertEq(7 * 1e5, IERC20(USDC).balanceOf(feeTaker2));
 
@@ -653,7 +652,7 @@ contract FeeRouterTest is Test {
         IERC20(DAI).approve(address(feeRouter), 1000e18);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e18, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(1e18, feeRouter.getEarnedFee(100, address(DAI)));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
@@ -662,7 +661,7 @@ contract FeeRouterTest is Test {
         feeRouter.claimFee(100, address(DAI));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(0, feeRouter.getEarnedFee(100,address(DAI)));
         assertEq(3 * 1e17, IERC20(DAI).balanceOf(feeTaker1));
         assertEq(7 * 1e17, IERC20(DAI).balanceOf(feeTaker2));
 
@@ -716,12 +715,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(sender1);
         feeRouter.callRegistry{value: 100e18}(feeRequest);
 
-        assertEq(1e17, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(1e17, feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
 
         feeRouter.claimFee(100, address(NATIVE_TOKEN_ADDRESS));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(0, feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
         assertEq(3 * 1e16, feeTaker1.balance);
         assertEq(7 * 1e16, feeTaker2.balance);
 
