@@ -48,12 +48,11 @@ abstract contract ISocketRegistry {
     }
 
     /**
-     * @notice Container for Fee Request
-     * @member id Id of the integrator registered in the fee config
-     * @member optionalNativeAmount amount sent to the fee router.
-     * @member inputToken request that is passed on to the registry
-     * @member data request that is passed on to the registry
-     * @member data request that is passed on to the registry
+     * @notice Container for Route Data
+     * @dev middlwares and bridges are both added into the same routes
+     * @member route address of the implementation contract fo a bride or middleware
+     * @member isEnabled bool variable that denotes if the particular route is enabled or disabled
+     * @member isMiddleware bool variable that denotes if the particular route is a middleware or not
      */
     struct RouteData {
         address route;
@@ -63,6 +62,7 @@ abstract contract ISocketRegistry {
 
     /**
      * @notice Resgistered Routes on the socket registry
+     * @dev middlwares and bridges are both added into the same routes
      */
     RouteData[] public routes;
 
