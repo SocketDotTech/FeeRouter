@@ -24,6 +24,7 @@ contract FeeRouter is Ownable {
     error TotalFeeAndPartsMismatch();
     error IntegratorIdNotRegistered();
     error FeeMisMatch();
+    error NativeTransferFailed();
 
     // MAX value of totalFeeInBps.
     uint16 immutable PRECISION = 10000;
@@ -312,8 +313,8 @@ contract FeeRouter is Ownable {
             uint256 amountToBeSent = (earnedFee * part) / total;
             emit ClaimFee(integratorId, tokenAddress, amountToBeSent, feeTaker);
             if (tokenAddress == NATIVE_TOKEN_ADDRESS) {
-                payable(feeTaker).call{value: amountToBeSent}("");
-                return;
+                (bool success, ) = payable(feeTaker).call{value: amountToBeSent}("");
+                if (!success) revert NativeTransferFailed();
             }
             IERC20(tokenAddress).safeTransfer(feeTaker, amountToBeSent);
         }
