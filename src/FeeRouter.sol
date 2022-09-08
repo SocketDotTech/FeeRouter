@@ -2,10 +2,8 @@ pragma solidity ^0.8.4;
 
 import "./interfaces/ISocketRegistry.sol";
 import "./utils/Ownable.sol";
-import "forge-std/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// import "forge-std/console.sol";
 
 contract FeeRouter is Ownable {
     using SafeERC20 for IERC20;
