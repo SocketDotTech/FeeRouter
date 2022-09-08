@@ -394,16 +394,17 @@ contract FeeRouterTest is Test {
         vm.expectRevert(FeeRouter.FeeMisMatch.selector);
         feeRouter.callRegistry(feeRequest);
 
-        // assertEq(1e18,feeRouter.getEarnedFee(address(DAI), 100));
         vm.stopPrank();
     }
 
-    // Deduction of Fee should be accurate.
-    function testcallRegistryForDAI() public {
+    // Deduction of Fee should be accurate. 
+    function testcallRegistryForDAI(uint256 amount) public {
+        vm.assume(amount > 1e18);
+        vm.assume(amount < 10000e18);
         deal(sender1, 100e18);
-        deal(address(DAI), sender1, 1000e18);
+        deal(address(DAI), sender1, 1000000e18);
         assertEq(sender1.balance, 100e18);
-        assertEq(IERC20(DAI).balanceOf(sender1), 1000e18);
+        assertEq(IERC20(DAI).balanceOf(sender1), 1000000e18);
 
         vm.startPrank(owner);
         // Create Config
@@ -429,28 +430,30 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = 999e18;
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
         feeRequest.userRequest.bridgeRequest.inputToken = DAI;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
         feeRequest.userRequest.middlewareRequest.inputToken = DAI;
         feeRequest.userRequest.middlewareRequest.id = 0;
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
-        feeRequest.inputAmount = 1000e18;
+        feeRequest.inputAmount = amount;
 
         vm.startPrank(sender1);
-        IERC20(DAI).approve(address(feeRouter), 1000e18);
+        IERC20(DAI).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e18, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(DAI)));
         vm.stopPrank();
     }
 
-    function testcallRegistryForUSDC() public {
+    function testcallRegistryForUSDC(uint256 amount) public {
+        vm.assume(amount > 1e7);
+        vm.assume(amount < 100000e7);
         deal(sender1, 100e18);
-        deal(address(USDC), sender1, 1000e6);
+        deal(address(USDC), sender1, 1000000e7);
         assertEq(sender1.balance, 100e18);
-        assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
+        assertEq(IERC20(USDC).balanceOf(sender1), 1000000e7);
 
         vm.startPrank(owner);
         // Create Config
@@ -476,27 +479,29 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = 999e6;
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
         feeRequest.userRequest.bridgeRequest.inputToken = USDC;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
         feeRequest.userRequest.middlewareRequest.inputToken = USDC;
         feeRequest.userRequest.middlewareRequest.id = 0;
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
-        feeRequest.inputAmount = 1000e6;
+        feeRequest.inputAmount = amount;
 
         vm.startPrank(sender1);
-        IERC20(USDC).approve(address(feeRouter), 1000e6);
+        IERC20(USDC).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e6, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(USDC)));
         vm.stopPrank();
     }
 
-    function testcallRegistryForEther() public {
-        deal(sender1, 101e18);
+    function testcallRegistryForEther(uint256 amount) public {
+        vm.assume(amount > 1e18);
+        vm.assume(amount < 1000e18);
+        deal(sender1, 100001e18);
         // deal(address(USDC), sender1, 1000e6);
-        assertEq(sender1.balance, 101e18);
+        assertEq(sender1.balance, 100001e18);
         // assertEq(IERC20(USDC).balanceOf(sender1), 1000e6);
 
         vm.startPrank(owner);
@@ -523,7 +528,7 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = 999e17;
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
         feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
@@ -531,13 +536,13 @@ contract FeeRouterTest is Test {
             NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.middlewareRequest.id = 0;
         feeRequest.userRequest.middlewareRequest.optionalNativeAmount = 0;
-        feeRequest.inputAmount = 100e18;
+        feeRequest.inputAmount = amount;
 
         vm.startPrank(sender1);
         // IERC20(USDC).approve(address(feeRouter),1000e6);
-        feeRouter.callRegistry{value: 100e18}(feeRequest);
+        feeRouter.callRegistry{value: amount}(feeRequest);
 
-        assertEq(1e17, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
         vm.stopPrank();
     }
 
@@ -585,7 +590,7 @@ contract FeeRouterTest is Test {
         IERC20(USDC).approve(address(feeRouter), 1000e6);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e6, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(1e6, feeRouter.getEarnedFee(100, address(USDC)));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
@@ -594,7 +599,7 @@ contract FeeRouterTest is Test {
         feeRouter.claimFee(100, address(USDC));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(address(USDC), 100));
+        assertEq(0, feeRouter.getEarnedFee(100, address(USDC)));
         assertEq(3 * 1e5, IERC20(USDC).balanceOf(feeTaker1));
         assertEq(7 * 1e5, IERC20(USDC).balanceOf(feeTaker2));
 
@@ -647,7 +652,7 @@ contract FeeRouterTest is Test {
         IERC20(DAI).approve(address(feeRouter), 1000e18);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq(1e18, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(1e18, feeRouter.getEarnedFee(100, address(DAI)));
         vm.stopPrank();
 
         deal(feeTaker2, 100e18);
@@ -656,7 +661,7 @@ contract FeeRouterTest is Test {
         feeRouter.claimFee(100, address(DAI));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(address(DAI), 100));
+        assertEq(0, feeRouter.getEarnedFee(100,address(DAI)));
         assertEq(3 * 1e17, IERC20(DAI).balanceOf(feeTaker1));
         assertEq(7 * 1e17, IERC20(DAI).balanceOf(feeTaker2));
 
@@ -710,12 +715,12 @@ contract FeeRouterTest is Test {
         vm.startPrank(sender1);
         feeRouter.callRegistry{value: 100e18}(feeRequest);
 
-        assertEq(1e17, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(1e17, feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
 
         feeRouter.claimFee(100, address(NATIVE_TOKEN_ADDRESS));
 
         // Assertions
-        assertEq(0, feeRouter.getEarnedFee(NATIVE_TOKEN_ADDRESS, 100));
+        assertEq(0, feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
         assertEq(3 * 1e16, feeTaker1.balance);
         assertEq(7 * 1e16, feeTaker2.balance);
 
