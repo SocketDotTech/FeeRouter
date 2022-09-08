@@ -16,7 +16,7 @@ Fee can be split into max 3 entities if needed.
 
 In summary:
 
-- Register Fee Config:
+- #### Register Fee Config:
   ```ts
   function registerFeeConfig(
         uint16 integratorId,
@@ -26,7 +26,7 @@ In summary:
   ```
   Owner can register the fee config on behalf of the integrator by calling the above function.
 
-- Update Fee Config:
+- #### Update Fee Config:
 
   ```ts
   function updateFeeConfig(
@@ -38,13 +38,13 @@ In summary:
   Owner can update the fee config on behalf of the integrator by calling the above function.
 
 
-- Claim Fee
+- #### Claim Fee
   ```ts
   function claimFee(uint16 integratorId, address tokenAddress)
   ```
   Anyone can call the above function and the earned fee will be distributed as per the fee config.
 
-- Call Registry
+- #### Call Registry
   ```ts
   function callRegistry(FeeRequest calldata _feeRequest)
   ```
@@ -52,7 +52,7 @@ In summary:
 
 ## UTILITY FUNCTIONS ->
 
-- Calculate And Claim Fee
+- #### Calculate And Claim Fee
     ```ts
     function _calculateAndClaimFee(
             uint16 integratorId,
@@ -65,7 +65,7 @@ In summary:
     ```
     Calculates the amount of fee from the total fee earned for the respective address and sends the fee to the registered entity.
 
-- Get Approval and Input Token Address
+- #### Get Approval and Input Token Address
     ```ts
     function _getApprovalAndInputTokenAddress(
         ISocketRegistry.UserRequest calldata userRequest
@@ -73,7 +73,7 @@ In summary:
     ```
     Returns the input token address and approval address required for bridging and deducting fee.
 
-- Get User Funds to Router Contract
+- #### Get User Funds to Router Contract
     ```ts
     function _getUserFundsToFeeRouter(
         address user,
@@ -83,13 +83,13 @@ In summary:
     ```
     Gets the funds to this contract if its an ERC20 from the user's wallet.
 
-- Get the amount thats needed to be approved after deduction of fee.
+- #### Get the amount thats needed to be approved after deduction of fee.
     ```ts
     function _getAmountForRegistry(uint16 integratorId, uint256 amount)
     ```
     Calculates and returns the amount after deducting the fee from the input amount respective to the integrator fee config.
 
-- Update the earned fee respecitve to the integrator and token
+- #### Update the earned fee respecitve to the integrator and token
     ```ts
     _updateEarnedFee(
         uint16 integratorId,
@@ -101,31 +101,31 @@ In summary:
     Updates the fee earned by an integrator in respect to the token.
 
 ## VIEW FUNCTIONS ->
-- Get Earned Fee
+- #### Get Earned Fee
     ```ts
     function getEarnedFee(uint16 integratorId, address tokenAddress)
     ```
     Returns the amout of fee earned by an integrator against the token.
 
-- Check if integrator is registered or not
+- #### Check if integrator is registered or not
     ```ts
     function getValidIntegrator(uint16 integratorId)
     ```
     Returns a boolean after checking if the integrator is registered or not.
 
-- Get Total Fee In Bps for an integrator.
+- #### Get Total Fee In Bps for an integrator.
     ```ts
     function getTotalFeeInBps(uint16 integratorId)
     ```
 
-- Get the Fee Splits for the integrator
+- #### Get the Fee Splits for the integrator
     ```ts
     function getFeeSplits(uint16 integratorId)
     ```
     Returns a FeeSplit Array registered against the integrator Id.
 
 ## EVENTS ->
-- Register Fee
+- #### Register Fee
     ```ts
     event RegisterFee(
             uint16 integratorId,
@@ -140,7 +140,7 @@ In summary:
     ```
     Event emitted when a fee is registered against an integrator.
 
-- Update Fee
+- #### Update Fee
     ```ts
     event UpdateFee(
             uint16 integratorId,
@@ -155,7 +155,7 @@ In summary:
     ```
     Event emitted when the fee is updated for an integrator.
 
-- Claim Fee
+- #### Claim Fee
     ```ts
     event ClaimFee(
             uint16 integratorId,
@@ -166,7 +166,7 @@ In summary:
     ```
     Event emitted when the Fee is claimed. Claim Fee will be emitted with each individual transfer.
 
-- Bridge socket
+- #### Bridge socket
     ```ts
     event BridgeSocket(
             uint16 integratorId,
@@ -182,7 +182,7 @@ In summary:
 
 ## STRUCTS ->
 
-- FeeRequest: 
+- #### FeeRequest: 
     ```ts
     struct FeeRequest {
             uint16 integratorId;
@@ -192,7 +192,7 @@ In summary:
     ```
     This forms the input to be passed to `callRegistry`,
 
-- FeeSplits: 
+- #### FeeSplits: 
     ```ts
     struct FeeSplits {
         address feeTaker;
@@ -203,25 +203,25 @@ In summary:
 
 ## MAPS ->
 
-- Valid Integrators: 
+- #### Valid Integrators: 
     ```ts
     mapping(uint16 => bool) validIntegrators;
     ```
     This map will hold all the integrators that have their fee registered.
 
-- Total Fee Map: 
+- #### Total Fee Map: 
     ```ts
     mapping(uint16 => uint16) totalFeeMap;
     ```
     This holds the totalFeeInBps for every registered integrator.
 
-- Fee Split Map: 
+- #### Fee Split Map: 
     ```ts
     mapping(uint16 => FeeSplits[3]) feeSplitMap;
     ```
     This holds the fee split configuration for each integrator registered.
 
-- Earned Token Fee Map: 
+- #### Earned Token Fee Map: 
     ```ts
     mapping(uint16 => mapping(address => uint256)) earnedTokenFeeMap;
     ```
