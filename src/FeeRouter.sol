@@ -204,7 +204,7 @@ contract FeeRouter is Ownable,ReentrancyGuard {
      * @param integratorId id of the integrator
      * @param tokenAddress address of the token to claim fee against
      */
-    function claimFee(uint16 integratorId, address tokenAddress) external {
+    function claimFee(uint16 integratorId, address tokenAddress) external nonReentrant {
         uint256 earnedFee = earnedTokenFeeMap[integratorId][tokenAddress];
         FeeSplits[3] memory integratorFeeSplits = feeSplitMap[integratorId];
         earnedTokenFeeMap[integratorId][tokenAddress] = 0;
