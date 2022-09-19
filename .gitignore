@@ -7,3 +7,10 @@ out/
 /broadcast/*
 /broadcast/*/31337/
 .env
+node_modules
+
+# Hardhat files
+artifacts/
+cache_hardhat/
+node_modules/
+typechain-types/
