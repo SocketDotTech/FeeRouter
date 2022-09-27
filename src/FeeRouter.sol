@@ -28,7 +28,7 @@ contract FeeRouter is Ownable,ReentrancyGuard {
     error MsgValueMismatch();
 
     // MAX value of totalFeeInBps.
-    uint16 immutable PRECISION = 10000;
+    uint32 immutable PRECISION = 1000000;
 
     constructor(address _socketRegistry, address owner_) Ownable(owner_) {
         socket = ISocketRegistry(_socketRegistry);

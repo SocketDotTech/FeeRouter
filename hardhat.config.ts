@@ -4,10 +4,12 @@ import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 import "hardhat-preprocessor";
 import "hardhat-deploy";
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 import fs from "fs";
 import { HardhatUserConfig } from "hardhat/config";
-require("dotenv");
 
 function getRemappings() {
   return fs
@@ -47,6 +49,7 @@ const getEtherscanKey = () => {
       return process.env.FANTOM_ETHERSCAN_KEY
     case 'aurora':
       return process.env.AURORA_ETHERSCAN_KEY
+    case 'xdai': return process.env.GNOSIS_ETHERSCAN_KEY
     default:
       return ''
   }
@@ -64,11 +67,11 @@ if (!alchemyApiKey) {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.13",
+    version: "0.8.7",
     settings: {
       optimizer: {
         enabled: true,
-        runs: 4294967295,
+        runs: 1000000,
       },
     },
   },
@@ -84,7 +87,7 @@ const config: HardhatUserConfig = {
       },
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${alchemyApiKey}`,
+      url: process.env.ETHEREUM_RPC,
       gasPrice: 20_000_000_000, // 20 gwei
       gasMultiplier: 1.5,
       chainId: 1,
@@ -164,7 +167,18 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: getEtherscanKey(),
+    // apiKey: getEtherscanKey(),
+    apiKey: {
+      polygon: process.env.POLYGON_ETHERSCAN_KEY,
+      xdai: process.env.GNOSIS_ETHERSCAN_KEY,
+      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_KEY,
+      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
+      aurora: process.env.AURORA_ETHERSCAN_KEY,
+      binance: process.env.BINANCE_ETHERSCAN_KEY,
+      opera: process.env.FANTOM_ETHERSCAN_KEY,
+      avax: process.env.AVALANCHE_ETHERSCAN_KEY,
+      ethereum: process.env.MAINNET_ETHERSCAN_KEY,
+    }
   },
   paths: {
     sources: "./src", // Use ./src rather than ./contracts as Hardhat expects

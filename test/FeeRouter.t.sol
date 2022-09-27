@@ -60,16 +60,16 @@ contract FeeRouterTest is Test {
     address private constant NATIVE_TOKEN_ADDRESS =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     uint16 integratorId = 3;
-    uint16 totalFees10 = 10;
+    uint16 totalFees10 = 1000;
     uint16 totalFees0 = 0;
-    uint16 totalFees100 = 100;
-    uint16 part3 = 3;
-    uint16 part7 = 7;
-    uint16 part4 = 4;
+    uint16 totalFees100 = 10000;
+    uint16 part3 = 300;
+    uint16 part7 = 700;
+    uint16 part4 = 400;
 
-    uint16 part30 = 30;
-    uint16 part70 = 70;
-    uint16 part40 = 40;
+    uint16 part30 = 3000;
+    uint16 part70 = 7000;
+    uint16 part40 = 4000;
 
     function setUp() public {
         feeRouter = new FeeRouter(
@@ -430,7 +430,7 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 1000000);
         feeRequest.userRequest.bridgeRequest.inputToken = DAI;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
@@ -443,7 +443,7 @@ contract FeeRouterTest is Test {
         IERC20(DAI).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(DAI)));
+        assertEq((amount * totalFees10)/1000000,feeRouter.getEarnedFee(100, address(DAI)));
         vm.stopPrank();
     }
 
@@ -479,7 +479,7 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 1000000);
         feeRequest.userRequest.bridgeRequest.inputToken = USDC;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
@@ -492,7 +492,7 @@ contract FeeRouterTest is Test {
         IERC20(USDC).approve(address(feeRouter),amount);
         feeRouter.callRegistry(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, address(USDC)));
+        assertEq((amount * totalFees10)/1000000,feeRouter.getEarnedFee(100, address(USDC)));
         vm.stopPrank();
     }
 
@@ -528,7 +528,7 @@ contract FeeRouterTest is Test {
         feeRequest.integratorId = 100;
         feeRequest.userRequest.receiverAddress = sender1;
         feeRequest.userRequest.toChainId = 137;
-        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 10000);
+        feeRequest.userRequest.amount = amount - ((amount * totalFees10) / 1000000);
         feeRequest.userRequest.bridgeRequest.inputToken = NATIVE_TOKEN_ADDRESS;
         feeRequest.userRequest.bridgeRequest.id = 2;
         feeRequest.userRequest.bridgeRequest.optionalNativeAmount = 0;
@@ -542,7 +542,7 @@ contract FeeRouterTest is Test {
         // IERC20(USDC).approve(address(feeRouter),1000e6);
         feeRouter.callRegistry{value: amount}(feeRequest);
 
-        assertEq((amount * totalFees10)/10000,feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
+        assertEq((amount * totalFees10)/1000000,feeRouter.getEarnedFee(100, NATIVE_TOKEN_ADDRESS));
         vm.stopPrank();
     }
 
