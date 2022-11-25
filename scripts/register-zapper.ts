@@ -50,16 +50,26 @@ const feeSplits = [{
 {
     feeTaker: socketTakerAddresses[hre.network.config.chainId],
     partOfTotalFeesInBps: socketPart
+},
+{
+  feeTaker: ethers.constants.AddressZero,
+  partOfTotalFeesInBps: 0
 }];
 
 export const registerFee = async () => {
+  if (!integratorId) throw new Error("integratorId needed");
+  if (!totalFeeInBps) throw new Error("totalFeeInBps needed");
+  if (!integratorPart) throw new Error("integratorPart needed");
+  if (!socketPart) throw new Error("socketPart needed");
+  if (!integratorTakerAddresses || !integratorTakerAddresses[hre.network.config.chainId]) throw new Error("integratorTakerAddresses needed");
+  if (!socketTakerAddresses || !socketTakerAddresses[hre.network.config.chainId]) throw new Error("socketTakerAddresses needed");
   try {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
 
     const signer = await ethers.getSigner(deployer);
     const factory = await ethers.getContractFactory('FeeRouter');
-    const feeRouter = factory.attach(addresses['feeRouter'][hre.network.config.chainId]);
+    const feeRouter = factory.attach(addresses[hre.network.config.chainId].feeRouter);
 
     const tx = await feeRouter.connect(signer).registerFeeConfig(integratorId, totalFeeInBps, feeSplits);
 
@@ -74,3 +84,13 @@ export const registerFee = async () => {
     };
   }
 };
+
+registerFee()
+  .then(() => {
+    console.log('done')
+    process.exit(0)
+  })
+  .catch((e) => {
+    console.error('failed', e)
+    process.exit(1)
+  })
