@@ -35,6 +35,13 @@ contract MultiRequestExecutor is Ownable,ReentrancyGuard {
         ISocketRegistry.UserRequest[] userRequests;
     }
 
+        /**
+     * @notice Event emitted when call registry is successful
+     */
+    event MultiRequestExecuted(
+        ISocketRegistry.UserRequest[] userRequests
+    );
+
     function execute(MultiRequest calldata multiRequest) public payable nonReentrant {
 
         ISocketRegistry.UserRequest[] memory userRequests = multiRequest.userRequests;
@@ -42,10 +49,12 @@ contract MultiRequestExecutor is Ownable,ReentrancyGuard {
         for (uint i = 0; i < userRequests.length; ++i) {
             callRegistry(userRequests[i]);
         }
+
+        emit MultiRequestExecuted(multiRequest.userRequests);
     }
 
     /**
-     * @notice Function that calls the registry after verifying if the fee is correct
+     * @notice Function that calls the registry
      * @dev multiRequest amount should match the aount after deducting the fee from the input amount
      * @param _userRequest _userRequest contains the input amount and the bridge request that is passed to socket registry
      */
@@ -62,6 +71,7 @@ contract MultiRequestExecutor is Ownable,ReentrancyGuard {
             routeAddress,
             _userRequest.amount
         );
+
         socket.outboundTransferTo{value: msg.value}(
             _userRequest
         );

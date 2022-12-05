@@ -16,8 +16,9 @@ contract MultiRequestExecutorTest is Test {
     MultiRequestExecutor public multiRequestExecutor;
     ISocketRegistry public socketRegistry;
 
-    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address constant USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address constant AnyUSDC_Polygon = 0xd69b31c3225728CC57ddaf9be532a4ee1620Be51;
+    address constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     address constant owner = 0x0E1B5AB67aF1c99F8c7Ebc71f41f75D4D6211e53;
     address constant sender1 = 0xD07E50196a05e6f9E6656EFaE10fc9963BEd6E57;
     address private constant NATIVE_TOKEN_ADDRESS =
@@ -37,24 +38,40 @@ contract MultiRequestExecutorTest is Test {
 
         ISocketRegistry.UserRequest[] memory userRequests = new ISocketRegistry.UserRequest[](2);
 
-        ISocketRegistry.UserRequest memory userRequest1;
-        userRequest1.receiverAddress = sender1;
-        userRequest1.toChainId = 137;
-        userRequest1.amount = 1000e6;
-        userRequest1.bridgeRequest.inputToken = USDC;
-        userRequest1.bridgeRequest.id = 1;
-        userRequest1.bridgeRequest.optionalNativeAmount = 0;
-        userRequests[0] = userRequest1;
+        //Celer
+        ISocketRegistry.UserRequest memory userRequest_Celer;
+        userRequest_Celer.receiverAddress = sender1;
+        userRequest_Celer.toChainId = 10;
+        userRequest_Celer.amount = 1000e6;
+        userRequest_Celer.bridgeRequest.inputToken = USDC;
+        userRequest_Celer.bridgeRequest.id = 20;
+        userRequest_Celer.bridgeRequest.optionalNativeAmount = 0;
 
-        ISocketRegistry.UserRequest memory userRequest2;
-        userRequest2.receiverAddress = sender1;
-        userRequest2.toChainId = 137;
-        userRequest2.amount = 1000e6;
-        userRequest2.bridgeRequest.inputToken = USDC;
-        userRequest2.bridgeRequest.id = 2;
-        userRequest2.bridgeRequest.optionalNativeAmount = 0;
-        userRequests[1] = userRequest2;
+        bytes memory extraData_Celer = abi.encode(block.timestamp, 501, sender1);
+        userRequest_Celer.bridgeRequest.data = extraData_Celer;
+        userRequests[0] = userRequest_Celer;
 
+        //AnySwap
+        ISocketRegistry.UserRequest memory userRequest_AnySwap;
+        userRequest_AnySwap.receiverAddress = sender1;
+        userRequest_AnySwap.toChainId = 10;
+        userRequest_AnySwap.amount = 1000e6;
+        userRequest_AnySwap.bridgeRequest.inputToken = USDC;
+        userRequest_AnySwap.bridgeRequest.id = 2;
+        userRequest_AnySwap.bridgeRequest.optionalNativeAmount = 0;
+
+        // extra data for Anyswap (Wrapper - AnyUSDC Address)
+        bytes memory data = abi.encode(AnyUSDC_Polygon);
+        userRequest_AnySwap.bridgeRequest.data = data;
+        userRequests[1] = userRequest_AnySwap;
+
+
+        //Hop
+        
+
+
+
+        //MultiRequest Generation
         MultiRequestExecutor.MultiRequest memory multiRequest;
         multiRequest.userRequests = userRequests;
 
