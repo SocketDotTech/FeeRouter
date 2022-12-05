@@ -5,7 +5,7 @@ import "../utils/Ownable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract MultiRequest is Ownable,ReentrancyGuard {
+contract MultiRequestExecutor is Ownable,ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /**
