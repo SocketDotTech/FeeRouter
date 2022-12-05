@@ -49,7 +49,7 @@ contract MultiRequestExecutor is Ownable,ReentrancyGuard {
      * @dev multiRequest amount should match the aount after deducting the fee from the input amount
      * @param _userRequest _userRequest contains the input amount and the bridge request that is passed to socket registry
      */
-    function callRegistry(ISocketRegistry.UserRequest memory _userRequest) public payable nonReentrant {
+    function callRegistry(ISocketRegistry.UserRequest memory _userRequest) public payable {
         address inputTokenAddress = _userRequest.bridgeRequest.inputToken;
         (address routeAddress, , ) = socket.routes(
                 _userRequest.bridgeRequest.id

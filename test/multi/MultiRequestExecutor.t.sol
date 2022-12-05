@@ -22,18 +22,50 @@ contract MultiRequestExecutorTest is Test {
     address constant sender1 = 0xD07E50196a05e6f9E6656EFaE10fc9963BEd6E57;
     address private constant NATIVE_TOKEN_ADDRESS =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address constant RegistryAddress = 0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0;
 
     function setUp() public {
         multiRequestExecutor = new MultiRequestExecutor(
-            0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0,
+            RegistryAddress,
             owner
         );
         socketRegistry =
-            ISocketRegistry(0xc30141B657f4216252dc59Af2e7CdB9D8792e1B0);
+            ISocketRegistry(RegistryAddress);
     }
 
+    function testMultiBridges() public {
 
+        ISocketRegistry.UserRequest[] memory userRequests = new ISocketRegistry.UserRequest[](2);
 
+        ISocketRegistry.UserRequest memory userRequest1;
+        userRequest1.receiverAddress = sender1;
+        userRequest1.toChainId = 137;
+        userRequest1.amount = 1000e6;
+        userRequest1.bridgeRequest.inputToken = USDC;
+        userRequest1.bridgeRequest.id = 1;
+        userRequest1.bridgeRequest.optionalNativeAmount = 0;
+        userRequests[0] = userRequest1;
 
+        ISocketRegistry.UserRequest memory userRequest2;
+        userRequest2.receiverAddress = sender1;
+        userRequest2.toChainId = 137;
+        userRequest2.amount = 1000e6;
+        userRequest2.bridgeRequest.inputToken = USDC;
+        userRequest2.bridgeRequest.id = 2;
+        userRequest2.bridgeRequest.optionalNativeAmount = 0;
+        userRequests[1] = userRequest2;
 
+        MultiRequestExecutor.MultiRequest memory multiRequest;
+        multiRequest.userRequests = userRequests;
+
+        deal(sender1, 100e18);
+        assertEq(sender1.balance, 100e18);
+        deal(address(USDC), sender1, 3000e6);
+        assertEq(IERC20(USDC).balanceOf(sender1), 3000e6);
+
+        vm.startPrank(sender1);
+        IERC20(USDC).approve(address(multiRequestExecutor), 3000e6);
+        multiRequestExecutor.execute(multiRequest);
+        vm.stopPrank();
+    }
 }
