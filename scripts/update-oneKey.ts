@@ -15,25 +15,33 @@ export interface FeeConfig {
 }
 
 const integratorTakerAddresses = {
-    [1]: '0x69D6D375DE8c7ADE7e44446dF97f49E661fDAD7d',
-    [10]: '0x0d9b71891Dc86400aCc7ead08c80aF301cCb3D71',
-    [56]: '0x9670271ec2e2937A2E9Df536784344bbfF2bbEa6',
-    [137]: '0xFB9af3DB5E19c4165F413F53fE3bBE6226834548',
-    [42161]: '0x0F9259af03052C96AFdA88ADD62eB3b5CbC185f1',
+    [1]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [10]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [56]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [100]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [137]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [250]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [42161]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [43114]: '0x4f5fc02be49bea15229041b87908148b04c14717',
+    [1313161554]: '0x4f5fc02be49bea15229041b87908148b04c14717',
 };
 
 const socketTakerAddresses = {
     [1]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
     [10]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
     [56]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
+    [100]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
     [137]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
+    [250]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
     [42161]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
+    [43114]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
+    [1313161554]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
 }
 
-const integratorId = 109;
-const totalFeeInBps = 2500; // PRECISION 1000000
-const integratorPart = 2250;
-const socketPart = 250;
+const integratorId = 99;
+const totalFeeInBps = 3000; // PRECISION 1000000
+const integratorPart = 2550;
+const socketPart = 450;
 
 const feeSplits = [{
     feeTaker: integratorTakerAddresses[hre.network.config.chainId],
@@ -48,7 +56,7 @@ const feeSplits = [{
   partOfTotalFeesInBps: 0
 }];
 
-export const registerFee = async () => {
+export const updateFee = async () => {
   if (!integratorId) throw new Error("integratorId needed");
   if (!totalFeeInBps) throw new Error("totalFeeInBps needed");
   if (!integratorPart) throw new Error("integratorPart needed");
@@ -63,7 +71,7 @@ export const registerFee = async () => {
     const factory = await ethers.getContractFactory('FeeRouter');
     const feeRouter = factory.attach(addresses[hre.network.config.chainId].feeRouter);
 
-    const tx = await feeRouter.connect(signer).registerFeeConfig(integratorId, totalFeeInBps, feeSplits);
+    const tx = await feeRouter.connect(signer).updateFeeConfig(integratorId, totalFeeInBps, feeSplits, {nonce: 195});
 
     console.log(tx);
     return {
@@ -77,7 +85,7 @@ export const registerFee = async () => {
   }
 };
 
-registerFee()
+updateFee()
   .then(() => {
     console.log('done')
     process.exit(0)
