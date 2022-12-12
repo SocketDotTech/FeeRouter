@@ -14,6 +14,7 @@ export interface FeeConfig {
   feeSplits: FeeSplits[];
 }
 
+// verify these before run
 const integratorTakerAddresses = {
     [1]: '0x4f5fc02be49bea15229041b87908148b04c14717',
     [10]: '0x4f5fc02be49bea15229041b87908148b04c14717',
@@ -26,6 +27,7 @@ const integratorTakerAddresses = {
     [1313161554]: '0x4f5fc02be49bea15229041b87908148b04c14717',
 };
 
+// verify these before run
 const socketTakerAddresses = {
     [1]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
     [10]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
@@ -38,6 +40,7 @@ const socketTakerAddresses = {
     [1313161554]: '0x59483D576e949d84D3BeDB5AAB24353A9f375093',
 }
 
+// verify these before run
 const integratorId = 99;
 const totalFeeInBps = 8750; // PRECISION 1000000
 const integratorPart = 7438;
@@ -71,7 +74,7 @@ export const registerFee = async () => {
     const factory = await ethers.getContractFactory('FeeRouter');
     const feeRouter = factory.attach(addresses[hre.network.config.chainId].feeRouter);
 
-    const tx = await feeRouter.connect(signer).registerFeeConfig(integratorId, totalFeeInBps, feeSplits, {nonce: 195});
+    const tx = await feeRouter.connect(signer).registerFeeConfig(integratorId, totalFeeInBps, feeSplits);
 
     console.log(tx);
     return {
