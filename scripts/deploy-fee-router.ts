@@ -34,7 +34,6 @@ export const deployFeeRouterContract = async () => {
 
     await sleep(30);
 
-    // console.log(await new ethers.providers.StaticJsonRpcProvider('https://red-old-log.optimism.quiknode.pro/e6f22dd5961bc5feccf7419be75d1afb6c09d94c/').getCode('0xc1c34251Fcd223771A4002dba7bef1B4105bA61F'));
     // return;
     await run("verify:verify", {
       address: feeRouterContract.address,
