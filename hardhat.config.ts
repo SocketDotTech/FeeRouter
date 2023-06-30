@@ -4,6 +4,7 @@ import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 import "hardhat-preprocessor";
 import "hardhat-deploy";
+import "hardhat-change-network";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 dotenvConfig({ path: resolve(__dirname, "./.env") });
